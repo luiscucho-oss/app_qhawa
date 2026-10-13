@@ -1,3 +1,72 @@
 <resources>
     <string name="app_name">Qhawa</string>
+    <string name="back">Atrás</string>
+    <string name="cancel">Cancelar</string>
+    <string name="mascot_description">Gato Qhawa, el monitor de calidad del aire</string>
+
+    <!-- Campos de formulario -->
+    <string name="field_name">Nombre</string>
+    <string name="field_email">Correo electrónico</string>
+    <string name="field_password">Contraseña</string>
+    <string name="field_confirm_password">Confirmar contraseña</string>
+    <string name="password_show">Mostrar contraseña</string>
+    <string name="password_hide">Ocultar contraseña</string>
+
+    <!-- Bienvenida -->
+    <string name="welcome_title">Respira tranquilo en casa</string>
+    <string name="welcome_subtitle">Qhawa mide la calidad del aire de tu hogar y te ayuda a cuidar a tu familia y a tus mascotas.</string>
+    <string name="welcome_login">Iniciar sesión</string>
+    <string name="welcome_create_account">Crear cuenta</string>
+
+    <!-- Login -->
+    <string name="login_title">Bienvenido de nuevo</string>
+    <string name="login_subtitle">Ingresa con tu correo y contraseña.</string>
+    <string name="login_forgot_password">¿Olvidaste tu contraseña?</string>
+    <string name="login_button">Iniciar sesión</string>
+    <string name="login_no_account">¿No tienes cuenta?</string>
+    <string name="login_create_account">Regístrate</string>
+
+    <!-- Registro -->
+    <string name="register_title">Crea tu cuenta</string>
+    <string name="register_subtitle">Regístrate para conocer la calidad del aire de tu hogar.</string>
+    <string name="register_password_hint">Mínimo %1$d caracteres.</string>
+    <string name="register_button">Crear cuenta</string>
+    <string name="register_have_account">¿Ya tienes cuenta?</string>
+    <string name="register_login">Inicia sesión</string>
+
+    <!-- Recuperar contraseña -->
+    <string name="forgot_title">Recupera tu contraseña</string>
+    <string name="forgot_subtitle">Escribe tu correo y te enviaremos un enlace para crear una contraseña nueva.</string>
+    <string name="forgot_button">Enviar enlace</string>
+    <string name="forgot_sent">Si el correo está registrado, te enviamos un enlace para crear una contraseña nueva. Revisa también la carpeta de spam.</string>
+    <string name="forgot_back_to_login">Volver a iniciar sesión</string>
+
+    <!-- Barra superior y cierre de sesión -->
+    <string name="nav_home">Inicio</string>
+    <string name="device_online">Dispositivo en línea</string>
+    <string name="device_offline">Dispositivo sin conexión</string>
+    <string name="notifications">Notificaciones</string>
+    <string name="profile">Perfil</string>
+    <string name="sign_out">Cerrar sesión</string>
+    <string name="sign_out_title">¿Cerrar sesión?</string>
+    <string name="sign_out_message">Tendrás que volver a ingresar tu correo y contraseña.</string>
+
+    <!-- Errores -->
+    <string name="error_name_empty">Ingresa tu nombre.</string>
+    <string name="error_email_empty">Ingresa tu correo.</string>
+    <string name="error_email_invalid">El correo no es válido.</string>
+    <string name="error_email_in_use">Ya existe una cuenta con este correo.</string>
+    <string name="error_password_empty">Ingresa tu contraseña.</string>
+    <string name="error_password_short">La contraseña es muy corta.</string>
+    <string name="error_password_weak">La contraseña es muy débil. Usa letras y números.</string>
+    <string name="error_password_mismatch">Las contraseñas no coinciden.</string>
+    <string name="error_invalid_credentials">Correo o contraseña incorrectos.</string>
+    <string name="error_user_disabled">Esta cuenta está deshabilitada.</string>
+    <string name="error_too_many_requests">Demasiados intentos. Espera unos minutos e inténtalo de nuevo.</string>
+    <string name="error_network">Sin conexión a internet. Revisa tu conexión.</string>
+    <string name="error_firebase_not_configured">Firebase no está configurado: falta el archivo google-services.json.</string>
+    <string name="error_unknown">Ocurrió un error. Inténtalo de nuevo.</string>
+
+    <!-- Inicio (temporal) -->
+    <string name="home_placeholder_title">Sesión iniciada</string>
 </resources>
