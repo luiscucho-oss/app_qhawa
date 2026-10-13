@@ -13,3 +13,6 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# Configuración privada de Firebase: cada integrante la descarga o se la pasan por privado
+google-services.json
