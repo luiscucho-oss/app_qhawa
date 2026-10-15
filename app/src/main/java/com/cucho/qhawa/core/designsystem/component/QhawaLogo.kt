@@ -1,12 +1,14 @@
 package com.cucho.qhawa.core.designsystem.component
 
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.material3.Icon
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -15,33 +17,39 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.cucho.qhawa.R
 
 /**
- * Logo de Qhawa: hoja verde + nombre.
- * PROVISIONAL: cuando tengas el logo real de Stitch (res/drawable/qhawa_logo.png),
- * reemplaza el contenido de esta función por un Image(painterResource(R.drawable.qhawa_logo), ...).
+ * Logo oficial de Qhawa.
  */
 @Composable
-fun QhawaLogo(
-    modifier: Modifier = Modifier,
-    textStyle: TextStyle = MaterialTheme.typography.headlineSmall,
-) {
-    Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
-        Icon(
-            painter = painterResource(R.drawable.ic_leaf),
-            contentDescription = null,
-            modifier = Modifier.size(28.dp),
-            tint = MaterialTheme.colorScheme.secondary,
-        )
-        Spacer(Modifier.width(8.dp))
-        Text(
-            text = stringResource(R.string.app_name),
-            style = textStyle,
-            color = MaterialTheme.colorScheme.primary,
-        )
+fun QhawaLogo(modifier: Modifier = Modifier) {
+    Surface(
+        modifier = modifier.size(76.dp),
+        shape = RoundedCornerShape(18.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerLowest,
+        shadowElevation = 1.dp,
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize().padding(6.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+        ) {
+            Image(
+                painter = painterResource(R.drawable.qhawa_brand_mark),
+                contentDescription = null,
+                modifier = Modifier.size(39.dp),
+                contentScale = ContentScale.Fit,
+            )
+            Text(
+                text = stringResource(R.string.app_name),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold,
+            )
+        }
     }
 }
 
