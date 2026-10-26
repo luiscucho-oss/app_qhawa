@@ -78,7 +78,7 @@ internal fun HabitsContent(
         Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(month, Modifier.padding(horizontal = 4.dp, vertical = 4.dp), style = MaterialTheme.typography.titleLarge, color = HabitInk)
             Row(Modifier.fillMaxWidth()) {
-                listOf("L", "M", "X", "J", "V", "S", "D").forEach { weekday ->
+                listOf("L", "M", "M", "J", "V", "S", "D").forEach { weekday ->
                     Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
                         Text(weekday, style = MaterialTheme.typography.labelLarge, color = Color(0xFF65746E))
                     }

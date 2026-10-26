@@ -32,7 +32,7 @@ internal fun AdviceContent(
     Text("Consejos para hoy", style = MaterialTheme.typography.headlineMedium, color = ink)
     Text("Cuatro consejos para el contexto actual, a tu ritmo", style = MaterialTheme.typography.bodyMedium, color = ink)
     mascot()
-    Text(selection.level?.let { "${it.label} · ${it.range}. Rangos demostrativos, no sanitarios." }
+    Text(selection.level?.let { "${it.label} · ${it.range}. Rangos demostrativos." }
         ?: "Orientación general · Sin lectura válida de PM2.5 para asignar un nivel.",
         style = MaterialTheme.typography.bodyMedium, color = ink)
     AnimatedVisibility(

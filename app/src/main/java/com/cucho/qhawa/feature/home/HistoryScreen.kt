@@ -213,9 +213,6 @@ internal fun HistoryScreen(
                     }
                 }
             }
-            Text((if (demo) "Valores ficticios para explorar la interfaz." else "Simulación de Wokwi; no son mediciones de tu hogar.") +
-                " Rangos de visualización, sin evaluación sanitaria.",
-                style = MaterialTheme.typography.bodySmall, color = HistoryMuted)
             Button(
                 onClick = {
                     val snapshot = filtered
