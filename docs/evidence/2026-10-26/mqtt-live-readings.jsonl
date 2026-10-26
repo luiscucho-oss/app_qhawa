@@ -1,0 +1,3 @@
+{"device_id":"macegato-demo-01","simulated":true,"pollutant":"PM2.5","value":110.0,"unit":"ug/m3","state":"ROJO","threshold_profile":"demo_not_health_standard","temperature_c":24.0,"humidity_pct":56.0,"dht_ok":true,"uptime_ms":796960,"sequence":159}
+{"device_id":"macegato-demo-01","simulated":true,"pollutant":"PM2.5","value":110.0,"unit":"ug/m3","state":"ROJO","threshold_profile":"demo_not_health_standard","temperature_c":24.0,"humidity_pct":56.0,"dht_ok":true,"uptime_ms":801964,"sequence":160}
+{"device_id":"macegato-demo-01","simulated":true,"pollutant":"PM2.5","value":110.0,"unit":"ug/m3","state":"ROJO","threshold_profile":"demo_not_health_standard","temperature_c":24.0,"humidity_pct":56.0,"dht_ok":true,"uptime_ms":806965,"sequence":161}

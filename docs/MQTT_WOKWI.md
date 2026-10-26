@@ -1,10 +1,12 @@
+> Actualización 26/10/2026: el puerto 1883 del broker anterior no respondió en esta comprobación. Se verifican ambos extremos con HiveMQ. Consulta también [NOTIFICACIONES.md](NOTIFICACIONES.md).
+
 # Qhawa ↔ Wokwi por MQTT
 
 ## Configuración implementada
 
 Proyecto: https://wokwi.com/projects/477950143546040321
 
-- Broker: `tcp://test.mosquitto.org:1883`.
+- Broker: `tcp://broker.hivemq.com:1883`.
 - Tópico exacto del sketch: `qhawa/demo/477386567410462721/lecturas`.
   Su identificador difiere del ID de la URL; no se debe sustituir por el ID de la URL.
 - Dispositivo esperado: `macegato-demo-01`.
@@ -12,8 +14,10 @@ Proyecto: https://wokwi.com/projects/477950143546040321
 - Publicación cada 5 segundos; reconexión de la app cada 5 segundos.
 - Más de 20 segundos sin mensaje válido: «Esperando lecturas», aunque el broker siga conectado.
 
-El proyecto Wokwi se usa tal como está: no necesita modificaciones ni mensajes
-inventados desde la app. Qhawa solo se suscribe. El broker público no permite
+El sketch actualizado está en `docs/wokwi/sketch.ino`: cambia el broker a
+`broker.hivemq.com`, conservando el circuito, tópico y contrato JSON. Sustituye el
+sketch de Wokwi y guarda tu proyecto. Qhawa solo se suscribe; no publica mensajes
+inventados. El broker público no permite
 autenticar el origen de los mensajes; este enlace es exclusivamente para la simulación.
 
 ## Uso

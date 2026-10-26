@@ -37,8 +37,9 @@ class WokwiMqttInstrumentedTest {
             repository.state.value.connection == DeviceConnection.CONNECTED && repository.state.value.readings.lastOrNull()?.simulated == true
         }
         compose.onNodeWithText("Wokwi en vivo · Simulación", substring = false).assertExists()
-        compose.onNodeWithText("PM2.5 · Partículas").assertExists()
-        compose.onNodeWithText("LED de Wokwi:", substring = true).assertExists()
+        compose.onNodeWithText("PM2.5").assertExists()
+        compose.onNodeWithText("Temperatura").assertExists()
+        compose.onNodeWithText("Humedad").assertExists()
         compose.onNodeWithText("Actuar · Ver consejos").performScrollTo()
         compose.waitForIdle()
         File(context.filesDir, "mqtt-home-proof.png").outputStream().use {

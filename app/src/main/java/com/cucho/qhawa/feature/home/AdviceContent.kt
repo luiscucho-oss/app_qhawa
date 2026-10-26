@@ -8,6 +8,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -72,7 +73,7 @@ internal fun AdviceContent(
                         Icon(Icons.Default.TaskAlt, null, Modifier.size(38.dp), tint = Color(0xFF765000))
                         Text("¡Recomendación completada!", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = ink)
                         Text("Próximo consejo en $remaining", style = MaterialTheme.typography.titleLarge, color = Color(0xFF765000))
-                        val time = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date(target.availableAt))
+                        val time = SimpleDateFormat("HH:mm:ss", LocalConfiguration.current.locales[0]).format(Date(target.availableAt))
                         Text("Disponible a las $time. Puedes cerrar la app o cambiar de pantalla: la espera se conserva.",
                             style = MaterialTheme.typography.bodyMedium, color = ink)
                     }

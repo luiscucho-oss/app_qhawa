@@ -26,6 +26,7 @@ object QhawaRoutes {
 @Composable
 fun QhawaNavHost(
     authRepository: AuthRepository,
+    notificationRequest: Long = 0,
     modifier: Modifier = Modifier,
     navController: NavHostController = rememberNavController(),
 ) {
@@ -82,6 +83,7 @@ fun QhawaNavHost(
 
         composable(QhawaRoutes.HOME) {
             HomeScreen(
+                notificationRequest = notificationRequest,
                 userId = authRepository.currentUserId ?: "local",
                 isDemoSession = authRepository.isDemo,
                 environmentRepository = (androidx.compose.ui.platform.LocalContext.current.applicationContext as com.cucho.qhawa.QhawaApplication).container.environmentRepository,

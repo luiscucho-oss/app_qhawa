@@ -28,7 +28,10 @@ android {
 
     buildTypes {
         debug {
-            if (providers.gradleProperty("qhawa.mqttPreview").orNull == "true") {
+            if (providers.gradleProperty("qhawa.notificationCheck").orNull == "true") {
+                applicationIdSuffix = ".notificationcheck"
+                manifestPlaceholders["appLabel"] = "Qhawa · Verificación"
+            } else if (providers.gradleProperty("qhawa.mqttPreview").orNull == "true") {
                 applicationIdSuffix = ".mqtt"
                 manifestPlaceholders["appLabel"] = "Qhawa MQTT"
             }

@@ -1,16 +1,14 @@
 package com.cucho.qhawa.feature.home
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
-import android.media.RingtoneManager
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.background
+import android.Manifest
+import android.os.Build
+import android.content.Intent
+import android.provider.Settings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.ui.zIndex
+import com.cucho.qhawa.core.notifications.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -52,6 +50,7 @@ fun HomeScreen(
     isDemoSession: Boolean,
     environmentRepository: EnvironmentRepository,
     modifier: Modifier = Modifier,
+    notificationRequest: Long = 0,
 ) {
     var selected by rememberSaveable { mutableIntStateOf(0) }
     var demonstration by rememberSaveable { mutableStateOf(false) }
@@ -64,51 +63,22 @@ fun HomeScreen(
     val context = LocalContext.current
 
     val currentReading = readings.lastOrNull()
-    var previousState by remember { mutableStateOf<AlertState?>(null) }
-    var activeAlert by remember { mutableStateOf<MetricLevel?>(null) }
-    var alertMessage by remember { mutableStateOf("") }
-
-    LaunchedEffect(currentReading) {
-        if (currentReading != null) {
-            val newState = AlertState(
-                pm = getPmLevel(currentReading.pm),
-                temp = getTempLevel(currentReading.temperature),
-                hum = getHumLevel(currentReading.humidity)
-            )
-
-            if (previousState != null && newState != previousState) {
-                val changes = mutableListOf<String>()
-                if (newState.pm != previousState!!.pm) {
-                    when (newState.pm) {
-                        MetricLevel.CRITICAL -> changes.add("PM2.5 alto")
-                        MetricLevel.WARNING -> changes.add("PM2.5 moderado")
-                        MetricLevel.GOOD -> changes.add("PM2.5 excelente")
-                    }
-                }
-                if (newState.temp != previousState!!.temp) {
-                    if (newState.temp != MetricLevel.GOOD) changes.add("Temperatura inusual")
-                    else changes.add("Temperatura óptima")
-                }
-                if (newState.hum != previousState!!.hum) {
-                    if (newState.hum != MetricLevel.GOOD) changes.add("Humedad inusual")
-                    else changes.add("Humedad ideal")
-                }
-
-                if (changes.isNotEmpty()) {
-                    playBellSound(context)
-                    activeAlert = listOf(newState.pm, newState.temp, newState.hum).maxByOrNull { it.weight } ?: MetricLevel.GOOD
-                    alertMessage = changes.joinToString(" • ")
-                }
-            }
-            previousState = newState
-        }
+    val alertEngine = remember { EnvironmentalAlertEngine() }
+    val notifications = remember(context) { EnvironmentalNotifications(context) }
+    var notificationStatus by remember { mutableStateOf(notifications.status()) }
+    var activeAlert by remember { mutableStateOf<EnvironmentalAlert?>(null) }
+    val alertMessage = activeAlert?.message.orEmpty()
+    val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
+        notificationStatus = notifications.status()
     }
-
-    LaunchedEffect(activeAlert) {
-        if (activeAlert != null) {
-            delay(6000)
-            activeAlert = null
-        }
+    LaunchedEffect(notificationRequest) { if (notificationRequest > 0) selected = 3 }
+    LaunchedEffect(realState, demonstration) {
+        val event = alertEngine.evaluate(realState, System.currentTimeMillis(), enabled = !demonstration)
+        if (demonstration || realState.connection != DeviceConnection.CONNECTED) activeAlert = null
+        if (event != null) { activeAlert = event; notifications.post(event) }
+    }
+    LaunchedEffect(activeAlert?.id) {
+        if (activeAlert != null) { delay(6000); activeAlert = null }
     }
 
     Scaffold(
@@ -117,7 +87,7 @@ fun HomeScreen(
         topBar = {
             QhawaTopBar(tabs[selected], !demonstration && realState.connection == DeviceConnection.CONNECTED,
                 userName, userEmail,
-                onNotificationsClick = { notice = realState.detail },
+                onNotificationsClick = { notificationStatus = notifications.status(); notice = realState.detail },
                 onSignOutClick = onSignOutClick)
         },
         bottomBar = {
@@ -130,39 +100,6 @@ fun HomeScreen(
         },
     ) { padding ->
         Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.TopCenter) {
-            AnimatedVisibility(
-                visible = activeAlert != null,
-                enter = slideInVertically(initialOffsetY = { -it }) + fadeIn(),
-                exit = slideOutVertically(targetOffsetY = { -it }) + fadeOut(),
-                modifier = Modifier.align(Alignment.TopCenter).padding(16.dp)
-            ) {
-                activeAlert?.let { level ->
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable {
-                                selected = 3 // Consejos
-                                activeAlert = null
-                            },
-                        shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(containerColor = level.color),
-                        elevation = CardDefaults.cardElevation(8.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(16.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            Icon(Icons.Default.NotificationsActive, null, tint = Color.White, modifier = Modifier.size(32.dp))
-                            Column(Modifier.weight(1f)) {
-                                Text(level.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = Color.White)
-                                Text(alertMessage, style = MaterialTheme.typography.bodySmall, color = Color.White)
-                                Text("Toca aquí para actuar ➔", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.8f), modifier = Modifier.padding(top = 4.dp))
-                            }
-                        }
-                    }
-                }
-            }
 
             if (selected == 1) {
                 HistoryScreen(
@@ -178,7 +115,7 @@ fun HomeScreen(
                     userKey = "${if (isDemoSession) "demo" else "account"}:$userId",
                     reading = currentReading,
                     demo = demonstration,
-                    alert = if (activeAlert != null && activeAlert != MetricLevel.GOOD) alertMessage else null,
+                    alert = if (activeAlert != null && activeAlert?.level != AlertLevel.GOOD) alertMessage else null,
                     onHistory = { selected = 1 },
                 )
             } else Column(Modifier.widthIn(max = 620.dp).fillMaxWidth().verticalScroll(rememberScrollState(selected)).padding(horizontal = 16.dp, vertical = 20.dp),
@@ -193,7 +130,7 @@ fun HomeScreen(
                     now = now,
                     habitDone = false,
                     adviceDone = false,
-                    alert = if (activeAlert != null && activeAlert != MetricLevel.GOOD) alertMessage else null,
+                    alert = if (activeAlert != null && activeAlert?.level != AlertLevel.GOOD) alertMessage else null,
                 )
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Column(Modifier.weight(1f)) {
@@ -202,23 +139,34 @@ fun HomeScreen(
                     }
                     Switch(checked = demonstration, onCheckedChange = { demonstration = it }, modifier = Modifier.semantics { contentDescription = "Explorar datos de ejemplo" })
                 }
-                if (!demonstration) {
-                    Panel("Wokwi · MQTT", Icons.Default.Wifi) {
-                        Text(realState.detail, style = MaterialTheme.typography.bodyMedium)
-                        Text("Broker: ${if (realState.brokerConnected) "conectado" else "sin conexión"} · ${WokwiMqtt.HOST}:1883", style = MaterialTheme.typography.labelSmall)
-                        Text("Potenciómetro → PM2.5 · DHT22 → temperatura y humedad. Simulación, no mediciones de tu hogar.", style = MaterialTheme.typography.bodySmall)
-                    }
-                }
                 when (selected) {
                     0 -> Overview(userName, readings.lastOrNull(), realState.connection, demonstration, now, { selected = 1 }, { selected = 3 })
                 }
                 Spacer(Modifier.height(8.dp))
             }
+            EnvironmentalAlertBanner(activeAlert, onAction = { selected = 3; activeAlert = null },
+                onDismiss = { activeAlert = null }, modifier = Modifier.align(Alignment.TopCenter).zIndex(20f).padding(16.dp))
         }
     }
     notice?.let { message ->
-        AlertDialog(onDismissRequest = { notice = null }, title = { Text("Avisos de Qhawa") }, text = { Text(message) },
-            confirmButton = { TextButton(onClick = { notice = null }) { Text("Entendido") } })
+        AlertDialog(onDismissRequest = { notice = null }, title = { Text("Avisos de Qhawa") }, text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(message)
+                Text(notificationStatus)
+                Text("Las alertas se generan mientras Qhawa está abierta y recibe lecturas. Los colores de Wokwi son de demostración.")
+                Button(onClick = {
+                    if (Build.VERSION.SDK_INT >= 33 && notifications.permissionRequired()) permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    else context.startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName))
+                }) { Text("Permisos de notificación") }
+                OutlinedButton(onClick = {
+                    val test = EnvironmentalAlert(System.nanoTime(), AlertLevel.WARNING, "Qhawa · Prueba de notificación", "Prueba de sonido; no es una lectura del ambiente.", true)
+                    val posted = notifications.post(test)
+                    notificationStatus = if (posted) notifications.status() else "No se pudo enviar: permite las notificaciones en Android."
+                    activeAlert = if (posted) test else test.copy(message = "Prueba del banner. Permite las notificaciones de Android para probar el sonido.")
+                    notice = null
+                }) { Text("Probar notificación y sonido") }
+            }
+        }, confirmButton = { TextButton(onClick = { notice = null }) { Text("Entendido") } })
     }
 }
 
@@ -227,19 +175,6 @@ private fun Heading(eyebrow: String, title: String, subtitle: String) {
     Text(eyebrow.uppercase(), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
     Text(title, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
     Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-}
-
-@Composable
-private fun Panel(title: String, icon: ImageVector, content: @Composable ColumnScope.() -> Unit) {
-    Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)) {
-        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Icon(icon, null, tint = MaterialTheme.colorScheme.primary)
-                Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-            }
-            content()
-        }
-    }
 }
 
 @Composable
@@ -276,7 +211,7 @@ private fun Overview(name: String?, reading: EnvironmentalReading?, connection: 
     val pmValue = reading?.pm
     val pmAnimated by animateFloatAsState(targetValue = pmValue?.toFloat() ?: 0f, label = "pm")
     val pmString = pmValue?.let { String.format(Locale.getDefault(), "%.1f", pmAnimated) } ?: "—"
-    val pmStatus = pmValue?.let { if (it <= 12) "Excelente" else if (it <= 35) "Moderado" else "Malo" } ?: "—"
+    val pmStatus = if (reading?.simulated == true) reading.demoState ?: "Sin clasificar" else "Sin clasificar"
 
     val tempValue = reading?.temperature
     val tempAnimated by animateFloatAsState(targetValue = tempValue?.toFloat() ?: 0f, label = "temp")
@@ -322,57 +257,8 @@ private fun Overview(name: String?, reading: EnvironmentalReading?, connection: 
         }
     }
 
-    if (!demo && reading != null) {
-        val hasSimulation = reading.simulated
-        val hasDemoState = reading.demoState != null
-        val hasMissingSensors = reading.temperature == null || reading.humidity == null
-
-        if (hasSimulation || hasDemoState || hasMissingSensors) {
-            Surface(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    if (hasSimulation) {
-                        Text("PM2.5 simulado por el potenciómetro de Wokwi (0–150 µg/m³).", style = MaterialTheme.typography.labelMedium)
-                    }
-                    if (hasDemoState) {
-                        Text("LED de Wokwi: ${reading.demoState} · Secuencia ${reading.sequence}", style = MaterialTheme.typography.labelMedium)
-                        Text("Límites demo: verde <25, amarillo 25–<75, rojo ≥75. No son una clasificación sanitaria.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                    if (hasMissingSensors) {
-                        Text("DHT22: sin lectura válida. Temperatura y humedad se muestran como —.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
-                    }
-                }
-            }
-        }
-    } else if (!demo) {
-        Text("Esperando el valor publicado por Wokwi.", style = MaterialTheme.typography.bodySmall)
-    } else {
-        Text("Ejemplo local. No corresponde a tu hogar.", style = MaterialTheme.typography.bodySmall)
-    }
-
     Button(onClick = history, modifier = Modifier.fillMaxWidth()) { Text("Comprender · Ver historial") }
     OutlinedButton(onClick = advice, modifier = Modifier.fillMaxWidth()) { Text("Actuar · Ver consejos") }
-}
-
-private enum class MetricLevel(val color: Color, val title: String, val weight: Int) {
-    GOOD(Color(0xFF2E7D32), "¡El ambiente ha mejorado!", 0),
-    WARNING(Color(0xFFF57C00), "Cambio Ambiental", 1),
-    CRITICAL(Color(0xFFC62828), "¡Alerta Ambiental!", 2)
-}
-
-private data class AlertState(val pm: MetricLevel, val temp: MetricLevel, val hum: MetricLevel)
-
-private fun getPmLevel(pm: Double?) = if (pm == null) MetricLevel.GOOD else if (pm <= 12) MetricLevel.GOOD else if (pm <= 35) MetricLevel.WARNING else MetricLevel.CRITICAL
-private fun getTempLevel(temp: Double?) = if (temp == null) MetricLevel.GOOD else if (temp in 18.0..25.0) MetricLevel.GOOD else MetricLevel.WARNING
-private fun getHumLevel(hum: Double?) = if (hum == null) MetricLevel.GOOD else if (hum in 30.0..60.0) MetricLevel.GOOD else MetricLevel.WARNING
-
-private fun playBellSound(context: android.content.Context) {
-    try {
-        val uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
-        val r = RingtoneManager.getRingtone(context, uri)
-        r.play()
-    } catch (e: Exception) {
-        e.printStackTrace()
-    }
 }
 
 private data class MetricCardData(
@@ -387,9 +273,9 @@ private data class MetricCardData(
 @Composable
 private fun MetricCard(metric: MetricCardData, modifier: Modifier = Modifier, expanded: Boolean = false) {
     val statusColor = when (metric.status) {
-        "—" -> MaterialTheme.colorScheme.onSurfaceVariant
-        "Malo", "Alto", "Frío", "Seco", "Cálido", "Húmedo" -> Color(0xFFAC3028)
-        "Moderado" -> Color(0xFF805400)
+        "—", "Sin clasificar" -> MaterialTheme.colorScheme.onSurfaceVariant
+        "ROJO", "Malo", "Alto", "Frío", "Seco", "Cálido", "Húmedo" -> Color(0xFFAC3028)
+        "AMARILLO", "Moderado" -> Color(0xFF805400)
         else -> Color(0xFF246540)
     }
     Card(

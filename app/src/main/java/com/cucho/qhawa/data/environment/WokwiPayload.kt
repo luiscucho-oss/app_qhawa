@@ -3,8 +3,8 @@ package com.cucho.qhawa.data.environment
 import com.google.gson.JsonParser
 
 object WokwiMqtt {
-    const val HOST = "test.mosquitto.org"
-    const val URI = "tcp://test.mosquitto.org:1883"
+    const val HOST = "broker.hivemq.com"
+    const val URI = "tcp://broker.hivemq.com:1883"
     // This topic is intentionally taken from sketch.ino, NOT from the Wokwi URL's ID.
     const val TOPIC = "qhawa/demo/477386567410462721/lecturas"
     const val DEVICE_ID = "macegato-demo-01"
