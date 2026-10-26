@@ -7,6 +7,9 @@ package com.cucho.qhawa.data.auth
 interface AuthRepository {
 
     /** true si hay una sesión abierta. Firebase la recuerda aunque se cierre la app. */
+    val isDemo: Boolean get() = false
+    val currentUserId: String? get() = currentUserEmail?.trim()?.lowercase(java.util.Locale.ROOT)
+
     val isLoggedIn: Boolean
 
     /** Nombre del usuario con sesión abierta (el que escribió al registrarse), o null. */

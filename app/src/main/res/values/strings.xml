@@ -13,9 +13,9 @@
     <string name="password_hide">Ocultar contraseña</string>
 
     <!-- Bienvenida -->
-    <string name="welcome_title">Respira tranquilo en casa</string>
-    <string name="welcome_subtitle">Qhawa mide la calidad del aire de tu hogar y te ayuda a cuidar a tu familia y a tus mascotas.</string>
-    <string name="welcome_login">Iniciar sesión</string>
+    <string name="welcome_title">Conoce el aire que respiras</string>
+    <string name="welcome_subtitle">Medir, comprender y actuar. Conoce las condiciones del aire de tu hogar.</string>
+    <string name="welcome_login">Comenzar</string>
     <string name="welcome_create_account">Crear cuenta</string>
 
     <!-- Login -->

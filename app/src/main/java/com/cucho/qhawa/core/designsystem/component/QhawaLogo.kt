@@ -62,7 +62,7 @@ fun QhawaLogo(modifier: Modifier = Modifier) {
 @Composable
 fun QhawaMascot(modifier: Modifier = Modifier) {
     Image(
-        painter = painterResource(R.drawable.qhawa_mascot_placeholder),
+        painter = painterResource(R.drawable.qhawa_logo),
         contentDescription = stringResource(R.string.mascot_description),
         modifier = modifier.clip(MaterialTheme.shapes.extraLarge),
         contentScale = ContentScale.Crop,

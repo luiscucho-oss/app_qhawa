@@ -60,7 +60,7 @@ fun QhawaTopBar(
 ) {
     Surface(
         modifier = modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.surfaceContainerLowest,
+        color = MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.88f),
         shadowElevation = 2.dp,
     ) {
         Row(

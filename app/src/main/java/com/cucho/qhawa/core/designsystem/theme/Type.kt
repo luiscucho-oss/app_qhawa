@@ -31,7 +31,7 @@ private fun style(
 
 /**
  * Escala de textos. Ejemplos del diseño:
- * - headlineLarge: "Bienestar de Mascotas", valores grandes (24.5)
+ * - headlineLarge: "Estado ambiental", valores grandes (24.5)
  * - headlineMedium: "¡Qhawa está feliz!"
  * - titleMedium: títulos de tarjetas
  * - bodyMedium: textos de párrafo

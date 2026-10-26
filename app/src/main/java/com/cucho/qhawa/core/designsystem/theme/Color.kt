@@ -35,7 +35,7 @@ val OutlineGray = Color(0xFF707881)
 val OutlineGrayVariant = Color(0xFFBFC7D1)
 
 // Colores extra del diseño para estados (barras laterales de las tarjetas, etiquetas "Óptimo", etc.).
-// Se usan en las pantallas de Inicio, Historial, Mascotas y Consejos.
+// Se usan en las pantallas de Inicio, Historial, Hábitos y Consejos.
 val StatusGoodSoft = Color(0xFFD3FDEA)
 val AccentGreen = Color(0xFF4EDEA3)
 val AccentOrange = Color(0xFFFFB95F)

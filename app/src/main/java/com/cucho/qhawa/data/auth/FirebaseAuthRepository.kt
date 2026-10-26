@@ -15,6 +15,8 @@ class FirebaseAuthRepository(
     private val firebaseAuth: FirebaseAuth,
 ) : AuthRepository {
 
+    override val currentUserId: String? get() = firebaseAuth.currentUser?.uid
+
     override val isLoggedIn: Boolean
         get() = firebaseAuth.currentUser != null
 

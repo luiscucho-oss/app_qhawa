@@ -3,6 +3,8 @@ package com.cucho.qhawa.data.auth
 /** Sesión local de demostración cuando Firebase no está configurado. */
 class DemoAuthRepository : AuthRepository {
 
+    override val isDemo = true
+
     private var signedIn = false
     private var name: String? = null
     private var email: String? = null
@@ -25,7 +27,7 @@ class DemoAuthRepository : AuthRepository {
         return Result.success(Unit)
     }
 
-    override suspend fun sendPasswordReset(email: String): Result<Unit> = Result.success(Unit)
+    override suspend fun sendPasswordReset(email: String): Result<Unit> = Result.failure(AuthException(AuthError.NOT_CONFIGURED))
 
     override fun signOut() {
         signedIn = false

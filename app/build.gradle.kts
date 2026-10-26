@@ -23,9 +23,16 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        manifestPlaceholders["appLabel"] = "@string/app_name"
     }
 
     buildTypes {
+        debug {
+            if (providers.gradleProperty("qhawa.mqttPreview").orNull == "true") {
+                applicationIdSuffix = ".mqtt"
+                manifestPlaceholders["appLabel"] = "Qhawa MQTT"
+            }
+        }
         release {
             optimization {
                 enable = false
@@ -42,6 +49,9 @@ android {
 }
 
 dependencies {
+    implementation(libs.androidx.datastore.preferences)
+    implementation(libs.mqtt.paho)
+    implementation(libs.gson)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.compose.material3)
@@ -65,4 +75,13 @@ dependencies {
     androidTestImplementation(libs.androidx.junit)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     debugImplementation(libs.androidx.compose.ui.tooling)
+}
+
+// Live MQTT checks are opt-in so regular builds never require a running simulator.
+tasks.withType<org.gradle.api.tasks.testing.Test>().configureEach {
+    systemProperty("qhawa.pauseTest", providers.gradleProperty("qhawa.pauseTest").getOrElse("false"))
+    systemProperty("qhawa.liveMqtt", providers.gradleProperty("qhawa.liveMqtt").getOrElse("false"))
+    systemProperty("qhawa.expectedPmMin", providers.gradleProperty("qhawa.expectedPmMin").getOrElse("0"))
+    systemProperty("qhawa.expectedTemperature", providers.gradleProperty("qhawa.expectedTemperature").getOrElse(""))
+    systemProperty("qhawa.expectedHumidity", providers.gradleProperty("qhawa.expectedHumidity").getOrElse(""))
 }

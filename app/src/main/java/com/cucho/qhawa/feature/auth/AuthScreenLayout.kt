@@ -20,6 +20,8 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import com.cucho.qhawa.core.designsystem.theme.qhawaScreenBackground
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -39,8 +41,8 @@ internal fun AuthScreenLayout(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Scaffold(
-        modifier = modifier,
-        containerColor = MaterialTheme.colorScheme.background,
+        modifier = modifier.qhawaScreenBackground(),
+        containerColor = Color.Transparent,
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -73,6 +75,11 @@ internal fun AuthScreenLayout(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Spacer(Modifier.height(28.dp))
+            val application = androidx.compose.ui.platform.LocalContext.current.applicationContext as com.cucho.qhawa.QhawaApplication
+            if (application.container.authRepository.isDemo) {
+                AuthBanner("Modo demostración · Sin cuenta remota. No uses tu contraseña habitual. La recuperación de correo requiere configurar Firebase.", isError = false)
+                Spacer(Modifier.height(16.dp))
+            }
             content()
         }
     }

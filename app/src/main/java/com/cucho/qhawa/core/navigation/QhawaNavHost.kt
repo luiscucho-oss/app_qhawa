@@ -82,6 +82,9 @@ fun QhawaNavHost(
 
         composable(QhawaRoutes.HOME) {
             HomeScreen(
+                userId = authRepository.currentUserId ?: "local",
+                isDemoSession = authRepository.isDemo,
+                environmentRepository = (androidx.compose.ui.platform.LocalContext.current.applicationContext as com.cucho.qhawa.QhawaApplication).container.environmentRepository,
                 userName = authRepository.currentUserName,
                 userEmail = authRepository.currentUserEmail,
                 onSignOutClick = {
