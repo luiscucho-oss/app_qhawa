@@ -116,13 +116,14 @@ class WellnessRepository internal constructor(
         return accepted
     }
 
-    suspend fun completeAdvice(now: Long): Boolean {
+    suspend fun completeAdvice(now: Long, adviceId: String? = null): Boolean {
+        require(adviceId == null || (dailyAdvice + pmAdvice.values.flatten()).any { it.id == adviceId })
         require(now >= 0 && now <= Long.MAX_VALUE - ADVICE_WAIT_MILLIS)
         var accepted = false
         durableUpdate { prefs ->
             if (now < (prefs[availableAt] ?: 0)) return@durableUpdate
             val index = (prefs[adviceIndex] ?: 0).mod(dailyAdvice.size)
-            prefs[adviceLog] = prefs[adviceLog].orEmpty() + "$now|${dailyAdvice[index].id}"
+            prefs[adviceLog] = prefs[adviceLog].orEmpty() + "$now|${adviceId ?: dailyAdvice[index].id}"
             prefs[adviceIndex] = (index + 1) % dailyAdvice.size
             prefs[availableAt] = now + ADVICE_WAIT_MILLIS
             accepted = true

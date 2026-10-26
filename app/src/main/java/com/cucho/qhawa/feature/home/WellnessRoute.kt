@@ -95,7 +95,7 @@ internal fun WellnessRoute(
                     }
                     var tip by rememberSaveable(selectedTab, welcome) { mutableIntStateOf(0) }
                     val tips = if (selectedTab == 2) listOf("Cada día tiene un hábito distinto. Toca una fecha para consultarlo.", "Tus días completados seguirán aquí cuando vuelvas.")
-                        else listOf("Después de actuar, consulta el historial para comparar registros.", "El siguiente consejo llegará cuando termine la espera; no necesitas dejar la app abierta.")
+                        else listOf("Después de actuar, consulta el historial para comparar registros.", "Podrás registrar otra acción cuando termine la espera; no necesitas dejar la app abierta.")
                     val mascot: @Composable () -> Unit = {
                         QhawaMascotComponent(
                             state = when {
@@ -122,10 +122,10 @@ internal fun WellnessRoute(
                                 }
                             }
                         } else {
-                            AdviceContent(progress, now, saving, reading, demo, mascot, onHistory) {
+                            AdviceContent(progress, now, saving, reading, demo, mascot, onHistory) { adviceId ->
                                 if (!saving) scope.launch {
                                     saving = true
-                                    val result = runCatching { repository.completeAdvice(currentClock()) }
+                                    val result = runCatching { repository.completeAdvice(currentClock(), adviceId) }
                                     saving = false
                                     if (result.isFailure) snackbar.showSnackbar("No se pudo guardar la recomendación. Inténtalo de nuevo.")
                                 }

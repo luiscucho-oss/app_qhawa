@@ -75,6 +75,23 @@ class WellnessRepositoryTest {
         } finally { job.cancelAndJoin() }
     }
 
+    @Test fun recordsSelectedLevelAdviceAndRetainsCooldownAndExistingLog() = runBlocking {
+        val job = SupervisorJob()
+        val store = PreferenceDataStoreFactory.create(scope = CoroutineScope(job + Dispatchers.IO)) { File(folder.root, "pm.preferences_pb") }
+        try {
+            val repository = WellnessRepository(store, "account:test") { emptyMap<String, Any>() }
+            assertTrue(repository.completeAdvice(now))
+            val originalLog = repository.data.first().adviceCompletions
+            val red = pmAdvice.getValue(PmAdviceLevel.RED)[2]
+            assertFalse(repository.completeAdvice(now + 1, red.id))
+            val next = now + ADVICE_WAIT_MILLIS
+            assertTrue(repository.completeAdvice(next, red.id))
+            val restored = WellnessRepository(store, "account:test") { emptyMap<String, Any>() }.data.first()
+            assertEquals(originalLog + "$next|${red.id}", restored.adviceCompletions)
+            assertEquals(next + ADVICE_WAIT_MILLIS, restored.adviceAvailableAt)
+        } finally { job.cancelAndJoin() }
+    }
+
     @Test fun rapidConcurrentCompletionsCannotSkipRecommendationsOrResetCooldown() = runBlocking {
         val job = SupervisorJob()
         val store = PreferenceDataStoreFactory.create(scope = CoroutineScope(job + Dispatchers.IO)) { File(folder.root, "concurrent.preferences_pb") }
