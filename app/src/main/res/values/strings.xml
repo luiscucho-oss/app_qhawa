@@ -17,6 +17,37 @@
     <string name="welcome_subtitle">Medir, comprender y actuar. Conoce las condiciones del aire de tu hogar.</string>
     <string name="welcome_login">Comenzar</string>
     <string name="welcome_create_account">Crear cuenta</string>
+    <string name="welcome_next">Siguiente</string>
+    <string name="welcome_skip">Saltar</string>
+    <string name="welcome_slide_1_title">Revisa tus mediciones</string>
+    <string name="welcome_slide_1_description">Mira los valores de temperatura, humedad y partículas. Toca una tarjeta para entender qué significa cada lectura.</string>
+    <string name="welcome_slide_2_title">Explora tu historial</string>
+    <string name="welcome_slide_2_description">Elige un periodo y sigue la línea del gráfico para comparar tus mediciones a distintas horas o días.</string>
+    <string name="welcome_slide_3_title">Consulta el ambiente de tu mascota</string>
+    <string name="welcome_slide_3_description">Revisa cada condición medida y su estado para saber cuáles están dentro del rango ambiental de referencia.</string>
+    <string name="welcome_slide_4_title">Sigue un consejo</string>
+    <string name="welcome_slide_4_description">Lee la acción recomendada y márcala como hecha cuando la completes. Luego revisa las mediciones para observar si cambiaron.</string>
+    <string name="welcome_slide_5_title">Muévete por la app</string>
+    <string name="welcome_slide_5_description">Toca Inicio, Historial, Mascotas o Consejos en la barra inferior. Cuando termines el tutorial, inicia sesión o crea tu cuenta.</string>
+    <string name="welcome_metric_pm">Partículas</string>
+    <string name="welcome_metric_temperature">Temperatura</string>
+    <string name="welcome_metric_humidity">Humedad</string>
+    <string name="welcome_history_example">Ejemplo de gráfico</string>
+    <string name="welcome_history_period">7 días</string>
+    <string name="welcome_visual_readings_hint">Toca una tarjeta para ver su significado</string>
+    <string name="welcome_pet_air_status">Aire en rango</string>
+    <string name="welcome_pet_temperature_status">Temperatura en rango</string>
+    <string name="welcome_advice_label">RECOMENDACIÓN</string>
+    <string name="welcome_advice_example">Ventila 15 min</string>
+    <string name="welcome_advice_action_hint">Abre el detalle para ver qué hacer.</string>
+    <string name="welcome_advice_done_hint">Márcalo como hecho al terminar.</string>
+    <string name="welcome_navigation_question">¿A dónde quieres ir?</string>
+    <string name="welcome_navigation_hint">Toca una sección para abrirla</string>
+    <string name="nav_history">Historial</string>
+    <string name="nav_pets">Mascotas</string>
+    <string name="nav_advice">Consejos</string>
+    <string name="welcome_visual_home">Ilustración de Qhawa y el ambiente del hogar</string>
+    <string name="welcome_visual_mascot">Qhawa con expresión feliz</string>
 
     <!-- Login -->
     <string name="login_title">Bienvenido de nuevo</string>
