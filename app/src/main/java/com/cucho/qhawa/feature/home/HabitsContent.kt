@@ -1,5 +1,14 @@
 package com.cucho.qhawa.feature.home
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -14,9 +23,10 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
@@ -56,21 +66,43 @@ internal fun HabitsContent(
     Text("Mis hábitos", style = MaterialTheme.typography.headlineMedium, color = HabitInk)
     Text("Una pequeña acción diferente cada día", style = MaterialTheme.typography.bodyMedium, color = HabitInk)
 
-    Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        Surface(Modifier.weight(1f).fillMaxHeight(), shape = RoundedCornerShape(20.dp), color = Color.Transparent) {
-            Column(Modifier.background(HabitGold).padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Icon(Icons.Default.LocalFireDepartment, null, tint = Color(0xFF774000), modifier = Modifier.size(26.dp))
-                Text("${stats.monthDone}", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = Color(0xFF4B3000))
-                Text(if (stats.monthDone == 1) "día este mes" else "días este mes", color = Color(0xFF4B3000), style = MaterialTheme.typography.bodySmall)
+    HabitStreakCard(streak = streak, todayDone = stats.todayDone)
+
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        HabitStat("Este mes", "${stats.monthDone} ${if (stats.monthDone == 1) "día" else "días"}", Modifier.weight(1f))
+        HabitStat("Esta semana", "${stats.weekDone} de 7", Modifier.weight(1f))
+    }
+
+    mascot()
+
+    Surface(shape = RoundedCornerShape(24.dp), color = Color(0xFFFFE9C5)) {
+        Column(Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text(if (selectedDate == today) "Tu hábito de hoy" else "Hábito del ${selectedDate.takeLast(2).toInt()}",
+                style = MaterialTheme.typography.labelLarge, color = HabitOrange)
+            Text(habit.title, style = MaterialTheme.typography.titleLarge, color = HabitInk)
+            var showDetail by rememberSaveable(selectedDate, habit.id) { mutableStateOf(false) }
+            TextButton(onClick = { showDetail = !showDetail }, contentPadding = PaddingValues(0.dp)) {
+                Text(if (showDetail) "Menos detalle" else "Ver detalle")
+                Icon(if (showDetail) Icons.Default.ExpandLess else Icons.Default.ExpandMore, null)
             }
-        }
-        Surface(Modifier.weight(1f).fillMaxHeight(), shape = RoundedCornerShape(20.dp), color = Color.White,
-            border = BorderStroke(1.dp, Color(0xFFDFEAE3))) {
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Icon(Icons.Default.EmojiEvents, null, tint = Color(0xFF047E71), modifier = Modifier.size(26.dp))
-                Text("$streak", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = HabitInk)
-                Text(if (streak == 1) "día de racha" else "días de racha", color = HabitInk, style = MaterialTheme.typography.bodySmall)
+            AnimatedVisibility(visible = showDetail) {
+                Text(habit.description, style = MaterialTheme.typography.bodyMedium, color = HabitInk)
             }
+            Button(
+                onClick = { onComplete(selectedDate) }, enabled = !done && !saving && selectedDate <= today,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF995300)),
+            ) {
+                Text(
+                    when {
+                        done && selectedDate == today -> "¡Completado hoy!"
+                        done -> "Completado"
+                        saving -> "Guardando…"
+                        else -> "Completar"
+                    },
+                )
+            }
+            Text("Tu avance refleja tu constancia, no la calidad del aire.", style = MaterialTheme.typography.bodySmall, color = HabitInk)
         }
     }
 
@@ -105,7 +137,7 @@ internal fun HabitsContent(
                             )
                             Box(
                                 Modifier.weight(1f).height(dayCellHeight)
-                                    .then(if (completed) Modifier.background(HabitGold, shape) else Modifier)
+                                    .then(if (completed) Modifier.background(HabitGold, shape).border(1.dp, Color(0xFF047E71), shape) else Modifier)
                                     .then(if (date == selectedDate) Modifier.border(2.dp, Color(0xFF006194), CircleShape) else Modifier)
                                     .semantics {
                                         contentDescription = "Día $date"
@@ -137,23 +169,102 @@ internal fun HabitsContent(
             HabitProgress("Este mes", stats.monthDone, stats.monthTotal)
         }
     }
+}
 
-    mascot()
-
-    Surface(shape = RoundedCornerShape(24.dp), color = Color(0xFFFFE9C5)) {
-        Column(Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text(if (selectedDate == today) "Tu hábito de hoy" else "Hábito del ${selectedDate.takeLast(2).toInt()}",
-                style = MaterialTheme.typography.labelLarge, color = HabitOrange)
-            Text(habit.title, style = MaterialTheme.typography.titleLarge, color = HabitInk)
-            Text(habit.description, style = MaterialTheme.typography.bodyMedium, color = HabitInk)
-            Button(
-                onClick = { onComplete(selectedDate) }, enabled = !done && !saving && selectedDate <= today,
-                modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF995300)),
-            ) {
-                Text(when { done && selectedDate == today -> "¡Completado hoy!"; done -> "Hábito completado"; saving -> "Guardando…"; else -> "Marcar como realizada" })
+@Composable
+private fun HabitStreakCard(streak: Int, todayDone: Boolean) {
+    val active = streak > 0
+    val green = Color(0xFF006C59)
+    val status = when {
+        todayDone -> "¡Hoy cumpliste!"
+        active -> "Completa hoy y sigue tu racha"
+        else -> "Tu racha empieza hoy"
+    }
+    Surface(shape = RoundedCornerShape(28.dp), color = Color.Transparent) {
+        Column(
+            Modifier.fillMaxWidth().background(Brush.linearGradient(listOf(green, Color(0xFF004D46))))
+                .padding(22.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween) {
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text("TU CONSTANCIA", style = MaterialTheme.typography.labelMedium, color = Color(0xFFCEF5E7))
+                    AnimatedContent(targetState = streak, label = "Días de racha") { count ->
+                        Text("$count", fontSize = 52.sp, lineHeight = 58.sp,
+                            fontWeight = FontWeight.ExtraBold, color = Color.White)
+                    }
+                    Text(if (streak == 1) "día de racha" else "días de racha",
+                        style = MaterialTheme.typography.titleMedium, color = Color.White)
+                }
+                StreakFlame(active = active, todayDone = todayDone)
             }
-            Text("Tu avance refleja tu constancia, no la calidad del aire.", style = MaterialTheme.typography.bodySmall, color = HabitInk)
+            Surface(shape = RoundedCornerShape(16.dp), color = Color.White.copy(alpha = 0.12f)) {
+                Row(Modifier.fillMaxWidth().padding(14.dp), horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.CenterVertically) {
+                    Icon(if (todayDone) Icons.Default.CheckCircle else Icons.Default.LocalFireDepartment,
+                        null, tint = Color(0xFFFFD956), modifier = Modifier.size(24.dp))
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(status, color = Color.White, style = MaterialTheme.typography.titleSmall)
+                        Text(when {
+                            todayDone -> "Vuelve mañana por otra pequeña acción."
+                            active -> "La racha sigue vigente desde ayer."
+                            else -> "Completa un hábito para encender el fuego."
+                        }, color = Color(0xFFCEF5E7), style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun StreakFlame(active: Boolean, todayDone: Boolean) {
+    // Sólo una racha vigente mantiene la llama encendida; no depende del sensor.
+    val pulse = if (active) {
+        val transition = rememberInfiniteTransition(label = "Fuego de la racha")
+        val scale by transition.animateFloat(
+            initialValue = 0.96f, targetValue = 1.04f,
+            animationSpec = infiniteRepeatable(tween(1100, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+            label = "Pulso de la llama",
+        )
+        scale
+    } else 1f
+    val tint by animateColorAsState(
+        if (active) Color(0xFFFFD956) else Color(0xFFAAC8BF), label = "Estado del fuego",
+    )
+    Box(
+        Modifier.size(112.dp).semantics {
+            contentDescription = "Fuego de la racha"
+            stateDescription = when {
+                todayDone -> "Encendido: hábito de hoy completado"
+                active -> "Encendido: pendiente completar hoy"
+                else -> "Apagado: sin racha actual"
+            }
+        }, contentAlignment = Alignment.Center,
+    ) {
+        Box(Modifier.size(112.dp).graphicsLayer { scaleX = pulse; scaleY = pulse }
+            .background(Brush.radialGradient(listOf(
+                tint.copy(alpha = if (active) 0.25f else 0.05f), Color.Transparent,
+            )), CircleShape))
+        Icon(Icons.Default.LocalFireDepartment, null, tint = Color.White.copy(alpha = 0.9f),
+            modifier = Modifier.size(102.dp).graphicsLayer { scaleX = pulse; scaleY = pulse })
+        Icon(Icons.Default.LocalFireDepartment, null, tint = tint,
+            modifier = Modifier.size(88.dp).graphicsLayer { scaleX = pulse; scaleY = pulse })
+    }
+}
+
+@Composable
+private fun HabitStat(label: String, value: String, modifier: Modifier = Modifier) {
+    Surface(modifier, shape = RoundedCornerShape(18.dp), color = Color.White,
+        border = BorderStroke(1.dp, Color(0xFFDFEAE3))) {
+        Row(Modifier.padding(14.dp), horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Default.CheckCircle, null, tint = Color(0xFF047E71), modifier = Modifier.size(22.dp))
+            Column {
+                Text(value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = HabitInk)
+                Text(label, style = MaterialTheme.typography.bodySmall, color = Color(0xFF52645C))
+            }
         }
     }
 }

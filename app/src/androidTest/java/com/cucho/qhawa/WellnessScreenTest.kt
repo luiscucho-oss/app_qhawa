@@ -13,7 +13,6 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.test.core.app.ApplicationProvider
-import androidx.test.platform.app.InstrumentationRegistry
 import com.cucho.qhawa.core.designsystem.theme.QhawaTheme
 import com.cucho.qhawa.core.designsystem.theme.qhawaScreenBackground
 import com.cucho.qhawa.data.habits.*
@@ -38,7 +37,7 @@ class WellnessScreenTest {
     private fun screenshot(name: String) {
         compose.mainClock.advanceTimeBy(500)
         compose.waitForIdle()
-        val folder = File(context.getExternalFilesDir(null), "wellness-evidence").apply { mkdirs() }
+        val folder = File(context.filesDir, "wellness-evidence").apply { mkdirs() }
         File(folder, "$name.png").outputStream().use {
             compose.onRoot().captureToImage().asAndroidBitmap().compress(Bitmap.CompressFormat.PNG, 100, it)
         }
@@ -62,12 +61,21 @@ class WellnessScreenTest {
         compose.onNodeWithContentDescription("Día 2026-10-27").assertIsNotEnabled()
         compose.onNodeWithContentDescription("Día $yesterday")
             .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Completado"))
+        compose.onNodeWithContentDescription("Fuego de la racha")
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Encendido: pendiente completar hoy"))
+        screenshot("00-racha-dinamica")
         val assigned = dailyHabit(now)
         compose.onNodeWithText(assigned.title).assertExists()
+        compose.onNodeWithText("Ver detalle").performScrollTo().performClick()
+        compose.onNodeWithText(assigned.description).assertExists()
+        compose.onNodeWithText("Menos detalle").performScrollTo().performClick()
+        compose.onNodeWithText(assigned.description).assertDoesNotExist()
         compose.onNodeWithText("Octubre 2026").performScrollTo()
         screenshot("01-calendario-mensual")
-        compose.onNodeWithText("Marcar como realizada").performScrollTo().performClick()
+        compose.onNodeWithText("Completar").performScrollTo().performClick()
         waitText("¡Completado hoy!")
+        compose.onNodeWithContentDescription("Fuego de la racha")
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Encendido: hábito de hoy completado"))
         compose.onNodeWithContentDescription("Qhawa, mascota interactiva").performScrollTo().performClick()
         compose.onNodeWithText("¡Completado hoy!").assertIsNotEnabled()
         screenshot("02-habito-completado")
@@ -76,7 +84,7 @@ class WellnessScreenTest {
         compose.runOnIdle { visible.value = true }
         waitText("¡Completado hoy!")
         compose.onNodeWithText(assigned.title).assertExists()
-        compose.onNodeWithText("1 de 7").assertExists()
+        compose.onAllNodesWithText("1 de 7").assertCountEquals(2)
         compose.onNodeWithText("2 de 31").assertExists()
         val restored = runBlocking { WellnessRepository(context, user).data.first() }
         assertEquals(setOf(yesterday, dateKey(now)), restored.completedDays)

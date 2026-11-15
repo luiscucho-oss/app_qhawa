@@ -33,7 +33,7 @@ val pmAdvice: Map<PmAdviceLevel, List<DailyHabit>> = mapOf(
         DailyHabit("pm_red_sources", "Detén la generación de partículas", "Suspende de forma segura las actividades identificadas que produzcan humo."),
         DailyHabit("pm_red_dust", "Evita levantar más polvo", "Pausa el barrido en seco, el sacudido y la aspiración sin filtro HEPA."),
         DailyHabit("pm_red_filter", "Refuerza la filtración", "Si dispones de un purificador HEPA adecuado, utiliza una velocidad alta según el fabricante y despeja sus entradas y salidas."),
-        DailyHabit("pm_red_ventilate", "Decide cómo renovar el aire", "Ventila si el exterior está más limpio; si hay contaminación exterior, evita abrir hacia esa fuente y prioriza reducir emisiones interiores y filtrar."),
+        DailyHabit("pm_red_ventilate", "Ventila tu hogar si el aire exterior está más limpio", "Abre las ventanas si el aire exterior está más limpio. Si hay humo o contaminación afuera, mantenlas cerradas y prioriza reducir las emisiones interiores y filtrar el aire."),
     ),
 )
 
