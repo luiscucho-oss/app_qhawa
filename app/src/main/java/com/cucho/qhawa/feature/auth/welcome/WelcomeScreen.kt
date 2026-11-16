@@ -23,9 +23,10 @@ import androidx.compose.material.icons.filled.Air
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Lightbulb
-import androidx.compose.material.icons.filled.Pets
+import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material.icons.filled.ShowChart
 import androidx.compose.material.icons.filled.Thermostat
+import androidx.compose.material.icons.filled.Timeline
 import androidx.compose.material.icons.filled.WaterDrop
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -39,6 +40,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -69,7 +71,7 @@ fun WelcomeScreen(
 
     Scaffold(
         modifier = modifier.qhawaScreenBackground(),
-        containerColor = androidx.compose.ui.graphics.Color.Transparent,
+        containerColor = Color.Transparent,
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -204,7 +206,7 @@ private fun WelcomeSlideVisual(page: Int, modifier: Modifier = Modifier) {
         when (page) {
             0 -> ReadingsIllustration()
             1 -> HistoryIllustration()
-            2 -> PetEnvironmentIllustration()
+            2 -> HabitsIllustration()
             3 -> AdviceIllustration()
             else -> NavigationIllustration()
         }
@@ -319,41 +321,62 @@ private fun HistoryIllustration() {
 }
 
 @Composable
-private fun PetEnvironmentIllustration() {
-    val colors = MaterialTheme.colorScheme
-    Box(
+private fun HabitsIllustration() {
+    val gold = Color(0xFFFFD956)
+    val ink = Color(0xFF163930)
+    Column(
         modifier = Modifier.fillMaxSize().background(
-            Brush.linearGradient(listOf(colors.tertiaryContainer, colors.primaryContainer, colors.surface)),
-        ),
+            Brush.linearGradient(listOf(Color(0xFF006C59), Color(0xFF004D46))),
+        ).padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Image(
-            painter = painterResource(R.drawable.qhawa_mascot_happy),
-            contentDescription = stringResource(R.string.welcome_visual_mascot),
-            modifier = Modifier.align(Alignment.Center).fillMaxWidth(0.88f).fillMaxHeight(0.88f),
-        )
-        EnvironmentTag(
-            icon = Icons.Filled.Air,
-            text = stringResource(R.string.welcome_pet_air_status),
-            modifier = Modifier.align(Alignment.TopStart).padding(12.dp),
-        )
-        EnvironmentTag(
-            icon = Icons.Filled.Thermostat,
-            text = stringResource(R.string.welcome_pet_temperature_status),
-            modifier = Modifier.align(Alignment.BottomEnd).padding(12.dp),
-        )
-    }
-}
-
-@Composable
-private fun EnvironmentTag(icon: ImageVector, text: String, modifier: Modifier = Modifier) {
-    Surface(modifier = modifier, shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f), tonalElevation = 3.dp) {
         Row(
-            modifier = Modifier.padding(horizontal = 11.dp, vertical = 9.dp),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
-            Text(text, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
+            Surface(shape = CircleShape, color = gold) {
+                Icon(
+                    Icons.Filled.LocalFireDepartment,
+                    contentDescription = null,
+                    tint = ink,
+                    modifier = Modifier.padding(7.dp).size(20.dp),
+                )
+            }
+            Text(
+                stringResource(R.string.welcome_habit_example_label),
+                style = MaterialTheme.typography.titleSmall,
+                color = Color.White,
+                fontWeight = FontWeight.Bold,
+            )
+        }
+        Box(
+            modifier = Modifier.fillMaxWidth().weight(1f).background(
+                Brush.radialGradient(listOf(Color(0xFF5DC9A1), Color.Transparent)),
+            ),
+            contentAlignment = Alignment.Center,
+        ) {
+            Image(
+                painter = painterResource(R.drawable.qhawa_mascot_happy),
+                contentDescription = stringResource(R.string.welcome_visual_mascot),
+                modifier = Modifier.fillMaxWidth(0.9f).fillMaxHeight(),
+            )
+        }
+        Surface(shape = RoundedCornerShape(18.dp), color = Color(0xFFFFF0D0), contentColor = ink) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(Icons.Filled.CheckCircle, contentDescription = null, tint = Color(0xFF006C59), modifier = Modifier.size(24.dp))
+                Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                    Text(
+                        stringResource(R.string.welcome_habit_example_title),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Text(stringResource(R.string.welcome_habit_example_description), style = MaterialTheme.typography.bodySmall)
+                }
+            }
         }
     }
 }
@@ -426,19 +449,10 @@ private fun NavigationIllustration() {
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 NavigationItem(Icons.Filled.Home, stringResource(R.string.nav_home), selected = true)
-                NavigationItem(Icons.Filled.ShowChart, stringResource(R.string.nav_history), selected = false)
-                NavigationItem(Icons.Filled.Pets, stringResource(R.string.nav_pets), selected = false)
+                NavigationItem(Icons.Filled.Timeline, stringResource(R.string.nav_history), selected = false)
+                NavigationItem(Icons.Filled.LocalFireDepartment, stringResource(R.string.nav_habits), selected = false)
                 NavigationItem(Icons.Filled.Lightbulb, stringResource(R.string.nav_advice), selected = false)
             }
-        }
-        Spacer(Modifier.height(14.dp))
-        Surface(shape = CircleShape, color = colors.surface.copy(alpha = 0.9f)) {
-            Text(
-                stringResource(R.string.welcome_navigation_hint),
-                modifier = Modifier.padding(horizontal = 13.dp, vertical = 8.dp),
-                style = MaterialTheme.typography.labelMedium,
-                color = colors.primary,
-            )
         }
     }
 }
