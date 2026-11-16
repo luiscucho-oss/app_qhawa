@@ -18,7 +18,10 @@ import androidx.compose.ui.test.onRoot
 import com.cucho.qhawa.core.designsystem.component.QhawaMascotComponent
 import com.cucho.qhawa.core.designsystem.component.QhawaMascotState
 import com.cucho.qhawa.core.designsystem.theme.QhawaTheme
-import com.cucho.qhawa.data.environment.UnconfiguredEnvironmentRepository
+import com.cucho.qhawa.data.environment.EnvironmentRepository
+import com.cucho.qhawa.data.environment.EnvironmentState
+import com.cucho.qhawa.data.habits.dailyAdvice
+import kotlinx.coroutines.flow.MutableStateFlow
 import com.cucho.qhawa.feature.home.HomeScreen
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -94,11 +97,11 @@ class QhawaMascotComponentTest {
                 HomeScreen(
                     userName = "Prueba", userEmail = null, onSignOutClick = {},
                     userId = "mascot-test-${System.nanoTime()}", isDemoSession = true,
-                    environmentRepository = UnconfiguredEnvironmentRepository(),
+                    environmentRepository = object : EnvironmentRepository { override val state = MutableStateFlow(EnvironmentState()) },
                 )
             }
         }
-        compose.onNodeWithText("Sin conexión MQTT. Conservaré el historial.").assertExists()
+        compose.onNodeWithText("Esperando datos del sensor").assertExists()
         screenshot("01-inicio")
         compose.onNodeWithText("Historial").performClick()
         compose.onNodeWithText("Cuando lleguen lecturas, las exploraremos aquí.").assertExists()
@@ -109,21 +112,22 @@ class QhawaMascotComponentTest {
         compose.waitUntil(10_000) { compose.onAllNodesWithText("¿Listos para completar el hábito de hoy?").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithText("¿Listos para completar el hábito de hoy?").assertExists()
         screenshot("03-habitos")
-        compose.onNodeWithText("Marcar como realizada").performScrollTo().performClick()
+        compose.onNodeWithText("Completar").performScrollTo().performClick()
         compose.waitUntil(10_000) { compose.onAllNodesWithText("¡Completado hoy!").fetchSemanticsNodes().isNotEmpty() }
         mascot().performScrollTo().assert(hasPose("Feliz"))
         compose.onNodeWithText("¡Qhawa está feliz! Excelente trabajo.").assertExists()
         screenshot("03-habitos-completado")
         compose.onNodeWithText("Consejos").performClick()
-        compose.waitUntil(10_000) { compose.onAllNodesWithText("Marcar como hecho").fetchSemanticsNodes().isNotEmpty() }
+        compose.waitUntil(10_000) { compose.onAllNodesWithText(dailyAdvice.first().title).fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithText("Aquí tienes algunas ideas para hoy.").assertExists()
         screenshot("04-consejos")
-        compose.onNodeWithText("Marcar como hecho").performScrollTo().performClick()
-        compose.waitUntil(10_000) { compose.onAllNodesWithText("¡Recomendación completada!").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithText(dailyAdvice.first().title).performScrollTo().performClick()
+        compose.onNodeWithText("Marcar como hecho").performClick()
+        compose.waitUntil(10_000) { compose.onAllNodesWithText("Acción registrada").fetchSemanticsNodes().isNotEmpty() }
         mascot().performScrollTo().assert(hasPose("Feliz"))
         compose.onNodeWithText("¡Genial! Cada acción cuenta.").assertExists()
         screenshot("04-consejos-completado")
         compose.onNodeWithText("Inicio").performClick()
-        compose.onNodeWithText("Sin conexión MQTT. Conservaré el historial.").assertExists()
+        compose.onNodeWithText("Esperando datos del sensor").assertExists()
     }
 }

@@ -25,7 +25,7 @@ val dailyHabits = listOf(
     DailyHabit("filter", "Consulta tu filtro", "Si tienes un equipo con filtro, revisa cuándo corresponde su mantenimiento."),
     DailyHabit("cables", "Despeja tu escritorio", "Ordena un pequeño espacio para facilitar la limpieza sin mover el monitor."),
     DailyHabit("corners", "Limpia un rincón", "Retira el polvo de un rincón accesible con un paño húmedo."),
-    DailyHabit("source", "Reconoce el origen de los datos", "Comprueba si estás viendo ejemplos locales o la simulación Wokwi."),
+    DailyHabit("source", "Reconoce el origen de los datos", "Comprueba si estás viendo ejemplos locales o mediciones del prototipo."),
     DailyHabit("morning", "Revisa una lectura de la mañana", "Consulta en Historial una lectura disponible de las primeras horas del día."),
     DailyHabit("evening", "Revisa una lectura de la tarde", "Compara una lectura reciente con otra anterior, si hay registros disponibles."),
     DailyHabit("products", "Lee una etiqueta", "Revisa las indicaciones de uso y ventilación de un producto de limpieza."),
@@ -78,5 +78,3 @@ val dailyAdvice = listOf(
     DailyHabit("care_textiles", "Cuida tus textiles", "Revisa si una funda o cortina necesita limpieza y sigue las instrucciones del fabricante."),
     DailyHabit("read_labels", "Conoce tus productos", "Lee la etiqueta de un producto de limpieza y sigue sus indicaciones de uso y ventilación."),
 )
-
-const val ADVICE_WAIT_MILLIS = 5 * 60 * 1000L

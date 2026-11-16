@@ -1,5 +1,7 @@
 # Verificación de Qhawa y alertas · 26/10/2026
 
+> Validación histórica con el simulador. Para las lecturas y rangos vigentes, consulta [MQTT_PROTOTIPO.md](MQTT_PROTOTIPO.md).
+
 ## Problemas encontrados y cambios
 
 - El banner se dibujaba antes del contenido y podía quedar cubierto. Ahora está

@@ -9,6 +9,9 @@ import com.cucho.qhawa.core.designsystem.theme.QhawaTheme
 import com.cucho.qhawa.data.environment.*
 import com.cucho.qhawa.feature.home.HomeScreen
 import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.Rule
 import org.junit.Test
@@ -27,7 +30,7 @@ class HistoryScreenTest {
     }
 
     @Test fun emptyMqttThenNewReadingsUpdateHistoryWithoutChangingScreens() {
-        val flow = MutableStateFlow(EnvironmentState(connection = DeviceConnection.WAITING, brokerConnected = true, source = "Wokwi · Simulación"))
+        val flow = MutableStateFlow(EnvironmentState(connection = DeviceConnection.WAITING, brokerConnected = true))
         val repository = object : EnvironmentRepository { override val state = flow }
         compose.setContent {
             QhawaTheme { HomeScreen("Prueba", null, {}, "history-test", true, repository) }
@@ -38,12 +41,21 @@ class HistoryScreenTest {
         val now = System.currentTimeMillis()
         compose.runOnIdle {
             val records = listOf(
-                EnvironmentalReading(now - 6000, 10.0, 24.0, 56.0, "PM2.5", true, demoState = "VERDE"),
-                EnvironmentalReading(now - 1000, 25.0, null, null, "PM2.5", true, demoState = "AMARILLO"),
+                EnvironmentalReading(now - 6000, 10.0, 24.0, 56.0, "PM2.5", 12.0),
+                EnvironmentalReading(now - 1000, 25.0, null, null, "PM2.5", 27.0),
             )
-            flow.value = EnvironmentState(DeviceConnection.CONNECTED, records, true, "Recibiendo Wokwi", "Wokwi · Simulación")
+            flow.value = EnvironmentState(DeviceConnection.CONNECTED, records, true, "Recibiendo lecturas del prototipo")
         }
         compose.onNodeWithText("Descargar reporte simple").assertIsEnabled()
+        val date = SimpleDateFormat("dd MMM · HH:mm", Locale.forLanguageTag("es")).format(Date(now - 1000))
+        val pm25 = String.format(Locale.getDefault(), "%.1f", 25.0)
+        val pm10 = String.format(Locale.getDefault(), "%.1f", 27.0)
+        compose.onAllNodesWithText(date, substring = true).assertCountEquals(1)
+        compose.onNodeWithText("$pm25 µg/m³", substring = true).assertDoesNotExist()
+        compose.onNodeWithText("Bajo ≤12").assertExists()
+        compose.onNodeWithText("Ver PM10").performScrollTo().performClick()
+        compose.onAllNodesWithText(date, substring = true).assertCountEquals(1)
+        compose.onNodeWithText("$pm10 µg/m³", substring = true).assertDoesNotExist()
         compose.onNodeWithText("Temperatura").performScrollTo().performClick()
         compose.onNodeWithText("Sin lecturas en este período").assertDoesNotExist()
         compose.onNodeWithText("Temperatura hoy").performScrollTo().assertIsDisplayed()

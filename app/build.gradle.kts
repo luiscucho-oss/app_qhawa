@@ -31,9 +31,6 @@ android {
             if (providers.gradleProperty("qhawa.notificationCheck").orNull == "true") {
                 applicationIdSuffix = ".notificationcheck"
                 manifestPlaceholders["appLabel"] = "Qhawa · Verificación"
-            } else if (providers.gradleProperty("qhawa.mqttPreview").orNull == "true") {
-                applicationIdSuffix = ".mqtt"
-                manifestPlaceholders["appLabel"] = "Qhawa MQTT"
             }
         }
         release {
@@ -62,6 +59,7 @@ dependencies {
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
+    implementation(libs.androidx.compose.foundation)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.runtime.compose)
@@ -80,11 +78,7 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.tooling)
 }
 
-// Live MQTT checks are opt-in so regular builds never require a running simulator.
+// The MQTT integration test can opt into a separate loopback Mosquitto.
 tasks.withType<org.gradle.api.tasks.testing.Test>().configureEach {
-    systemProperty("qhawa.pauseTest", providers.gradleProperty("qhawa.pauseTest").getOrElse("false"))
-    systemProperty("qhawa.liveMqtt", providers.gradleProperty("qhawa.liveMqtt").getOrElse("false"))
-    systemProperty("qhawa.expectedPmMin", providers.gradleProperty("qhawa.expectedPmMin").getOrElse("0"))
-    systemProperty("qhawa.expectedTemperature", providers.gradleProperty("qhawa.expectedTemperature").getOrElse(""))
-    systemProperty("qhawa.expectedHumidity", providers.gradleProperty("qhawa.expectedHumidity").getOrElse(""))
+    systemProperty("qhawa.testMqttPort", providers.gradleProperty("qhawa.testMqttPort").getOrElse(""))
 }

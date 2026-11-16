@@ -4,8 +4,6 @@ import android.content.Context
 import android.graphics.Bitmap
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asAndroidBitmap
@@ -92,47 +90,36 @@ class WellnessScreenTest {
         assertEquals(setOf(yesterday), HabitStore(context, user).read())
     }
 
-    @Test fun fourAdviceRemainVisibleAndCooldownSurvivesNavigationAndReopening() {
+    @Test fun adviceCardsOpenInstructionsAndTwoActionsCanBeRecordedImmediately() {
         val user = "account:advice-${System.nanoTime()}"
-        val tab = mutableIntStateOf(3)
         val visible = mutableStateOf(true)
-        val clock = mutableLongStateOf(now)
         compose.setContent {
             QhawaTheme {
                 Box(Modifier.fillMaxSize().qhawaScreenBackground()) {
-                    if (visible.value) WellnessRoute(tab.intValue, user, null, true, null, {}, clock = { clock.longValue })
+                    if (visible.value) WellnessRoute(3, user, null, true, null, {}, clock = { now })
                 }
             }
         }
-        waitText("Marcar como hecho")
-        compose.onNodeWithContentDescription("Explorar datos de ejemplo").assertDoesNotExist()
-        compose.onAllNodesWithText("Marcar como hecho")[0].performScrollTo()
-        screenshot("03-consejo-colorido")
-        compose.onAllNodesWithText("Marcar como hecho")[0].performClick()
-        waitText("¡Acción registrada!")
-        dailyAdvice.take(4).forEach { compose.onNodeWithText(it.title).assertExists() }
-        compose.onAllNodesWithText("Marcar como hecho").assertCountEquals(4)
-        compose.onAllNodesWithText("Marcar como hecho")[0].assertIsNotEnabled()
-        compose.onNodeWithText("Puedes registrar otra acción en 05:00").performScrollTo().assertIsDisplayed()
-        screenshot("04-espera-cinco-minutos")
-        val before = runBlocking { WellnessRepository(context, user).data.first() }
-        assertEquals(now + 300_000, before.adviceAvailableAt)
-        compose.runOnIdle { tab.intValue = 2 }
-        waitText("Mis hábitos")
-        compose.runOnIdle { tab.intValue = 3 }
-        waitText("Puedes registrar otra acción en 05:00")
+        waitText(dailyAdvice.first().title)
+        compose.onAllNodesWithText("Ver qué hacer").assertCountEquals(4)
+        compose.onNodeWithText("Marcar como hecho").assertDoesNotExist()
+        val first = dailyAdvice[0]
+        val second = dailyAdvice[1]
+        listOf(first, second).forEach { advice ->
+            compose.onNodeWithText(advice.description).assertDoesNotExist()
+            compose.onNodeWithText(advice.title).performScrollTo().performClick()
+            waitText(advice.description)
+            compose.onNodeWithText("Marcar como hecho").performScrollTo().assertIsEnabled().performClick()
+            compose.waitUntil(10_000) {
+                val progress = runBlocking { WellnessRepository(context, user).data.first() }
+                "$now|${advice.id}" in progress.adviceCompletions
+            }
+        }
         compose.runOnIdle { visible.value = false }
         compose.waitForIdle()
         compose.runOnIdle { visible.value = true }
-        waitText("Puedes registrar otra acción en 05:00")
-        assertEquals(before.adviceAvailableAt, runBlocking { WellnessRepository(context, user).data.first() }.adviceAvailableAt)
-        compose.runOnIdle { clock.longValue = now + 299_999 }
-        waitText("Puedes registrar otra acción en 00:01")
-        compose.onAllNodesWithText("Marcar como hecho").assertCountEquals(4)
-        compose.onAllNodesWithText("Marcar como hecho")[0].assertIsNotEnabled()
-        compose.runOnIdle { clock.longValue = now + 300_000 }
-        waitText(dailyAdvice[1].title)
-        compose.waitUntil(10_000) { compose.onAllNodesWithText("Marcar como hecho").filter(isEnabled()).fetchSemanticsNodes().size == 4 }
-        screenshot("05-siguiente-consejo")
+        waitText(first.title)
+        val restored = runBlocking { WellnessRepository(context, user).data.first() }
+        assertEquals(setOf("$now|${first.id}", "$now|${second.id}"), restored.adviceCompletions)
     }
 }

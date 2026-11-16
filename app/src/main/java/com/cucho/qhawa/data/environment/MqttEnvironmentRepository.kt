@@ -1,89 +1,141 @@
 package com.cucho.qhawa.data.environment
 
 import android.content.Context
+import java.io.IOException
+import java.util.UUID
+import javax.net.SocketFactory
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import org.eclipse.paho.client.mqttv3.*
 import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence
-import java.util.UUID
 
-/** A single shared subscription while the environmental UI is visible; no Android service required. */
+/** A single subscription serves the four tabs while the environmental UI is visible. */
 class MqttEnvironmentRepository internal constructor(
     private val history: ReadingHistory,
-    private val scope: CoroutineScope,
+    scope: CoroutineScope,
+    private val uri: String,
+    private val socketFactory: () -> SocketFactory?,
 ) : EnvironmentRepository {
-    constructor(context: Context) : this(EnvironmentHistoryStore(context), CoroutineScope(SupervisorJob() + Dispatchers.IO))
+    constructor(context: Context) : this(
+        EnvironmentHistoryStore(context.applicationContext),
+        CoroutineScope(SupervisorJob() + Dispatchers.IO),
+        QhawaSensorMqtt.URI,
+        { context.applicationContext.prototypeSocketFactory() },
+    )
+
+    override suspend fun forEachReading(from: Long, to: Long, action: (EnvironmentalReading) -> Unit) {
+        withContext(Dispatchers.IO) {
+            history.forEach(from, to) {
+                ensureActive()
+                action(it)
+            }
+        }
+    }
 
     override val state: StateFlow<EnvironmentState> = channelFlow {
         val cached = runCatching { history.load(System.currentTimeMillis()) }.getOrDefault(emptyList())
-        val live = MutableStateFlow(EnvironmentState(DeviceConnection.LOADING, cached,
-            detail = "Conectando al broker MQTT…", source = "Wokwi · Simulación"))
+        val live = MutableStateFlow(EnvironmentState(DeviceConnection.LOADING, cached, detail = "Conectando a Mosquitto…"))
         val forwarding = launch { live.collect { send(it) } }
-        val gate = WokwiSequenceGate()
         val lock = Any()
-        var lastReceivedElapsed: Long? = null
-        val client = MqttClient(WokwiMqtt.URI, "qhawa-app-${UUID.randomUUID()}", MemoryPersistence())
-        client.setCallback(object : MqttCallback {
-            override fun deliveryComplete(token: IMqttDeliveryToken?) = Unit
-            override fun connectionLost(cause: Throwable?) {
-                live.update { it.copy(connection = DeviceConnection.DISCONNECTED, brokerConnected = false,
-                    detail = "Conexión MQTT interrumpida. Reintentando…") }
-            }
-            override fun messageArrived(topic: String, message: MqttMessage) {
-                if (topic != WokwiMqtt.TOPIC) return
-                val now = System.currentTimeMillis()
-                val reading = parseWokwiPayload(message.payload.toString(Charsets.UTF_8), now, message.isRetained) ?: return
-                synchronized(lock) {
-                    if (!gate.accept(reading)) return
-                    lastReceivedElapsed = (System.nanoTime() / 1_000_000)
-                    val saved = runCatching { history.save(reading) }.isSuccess
-                    live.update { previous ->
-                        val samples = previous.readings.filter { it.timestamp >= now - EnvironmentHistoryStore.RETENTION_MS && it.timestamp / 60_000 != now / 60_000 } + reading
-                        previous.copy(connection = DeviceConnection.CONNECTED, brokerConnected = true, readings = samples,
-                            detail = if (saved) "Recibiendo Wokwi cada 5 s · secuencia ${reading.sequence}" else "Lectura recibida · No se pudo guardar el historial")
-                    }
-                }
-            }
-        })
+
         try {
             while (isActive) {
+                val client = MqttClient(uri, "qhawa-app-${UUID.randomUUID()}", MemoryPersistence())
+                var lastReceivedNanos = System.nanoTime()
+                var accepting = false
+                client.setCallback(object : MqttCallback {
+                    override fun deliveryComplete(token: IMqttDeliveryToken?) = Unit
+
+                    override fun connectionLost(cause: Throwable?) {
+                        synchronized(lock) {
+                            if (!accepting) return
+                            accepting = false
+                            live.update {
+                                it.copy(connection = DeviceConnection.DISCONNECTED, brokerConnected = false,
+                                    detail = "Conexión con Mosquitto interrumpida. Reintentando…")
+                            }
+                        }
+                    }
+
+                    override fun messageArrived(topic: String, message: MqttMessage) {
+                        if (topic != QhawaSensorMqtt.TOPIC) return
+                        val now = System.currentTimeMillis()
+                        val reading = parseQhawaSensorPayload(message.payload, now, message.isRetained) ?: return
+                        synchronized(lock) {
+                            if (!accepting) return
+                            lastReceivedNanos = System.nanoTime()
+                            val saved = runCatching { history.save(reading) }.isSuccess
+                            live.update { previous ->
+                                val samples = if (saved) {
+                                    val minute = now / 60_000
+                                    val cutoff = now - EnvironmentHistoryStore.RETENTION_MS
+                                    previous.readings.filter { it.timestamp >= cutoff && it.timestamp / 60_000 != minute } + reading
+                                } else previous.readings
+                                previous.copy(
+                                    connection = DeviceConnection.CONNECTED,
+                                    brokerConnected = true,
+                                    readings = samples,
+                                    lastReceived = reading,
+                                    lastPm25 = if (reading.hasValidPm25) reading else previous.lastPm25,
+                                    detail = if (saved) "Recibiendo lecturas del prototipo" else "Lectura recibida · No se pudo guardar el historial",
+                                )
+                            }
+                        }
+                    }
+                })
+
                 try {
-                    live.update { it.copy(connection = DeviceConnection.LOADING, brokerConnected = false, detail = "Conectando al broker MQTT…") }
+                    val factory = socketFactory()
+                    live.update { it.copy(connection = DeviceConnection.LOADING, detail = "Conectando a Mosquitto…") }
                     client.connect(MqttConnectOptions().apply {
+                        if (factory != null) this.socketFactory = factory
                         isCleanSession = true
-                        isAutomaticReconnect = false // The coroutine also retries initial connection failures.
-                        connectionTimeout = 10
+                        connectionTimeout = 5
                         keepAliveInterval = 15
                         mqttVersion = MqttConnectOptions.MQTT_VERSION_3_1_1
                     })
-                    synchronized(lock) { lastReceivedElapsed = null }
-                    live.update { it.copy(connection = DeviceConnection.WAITING, brokerConnected = true,
-                        detail = "MQTT conectado · Esperando que Wokwi publique") }
-                    client.subscribe(WokwiMqtt.TOPIC, 0)
+                    synchronized(lock) {
+                        accepting = client.isConnected
+                        lastReceivedNanos = System.nanoTime()
+                        if (accepting) live.update {
+                            it.copy(connection = DeviceConnection.WAITING, brokerConnected = true, detail = "Mosquitto conectado · Esperando datos del prototipo")
+                        }
+                    }
+                    client.subscribe(QhawaSensorMqtt.TOPIC, 0)
                     while (isActive && client.isConnected) {
                         delay(1000)
                         synchronized(lock) {
-                            val last = lastReceivedElapsed
-                            if (client.isConnected && last != null && (System.nanoTime() / 1_000_000) - last > WokwiMqtt.STALE_MS) {
-                                live.update { it.copy(connection = DeviceConnection.WAITING,
-                                    detail = "Sin lecturas nuevas hace más de 20 s · Verifica que Wokwi esté ejecutándose") }
+                            if (accepting && (System.nanoTime() - lastReceivedNanos) / 1_000_000 >= QhawaSensorMqtt.STALE_MS) {
+                                live.update {
+                                    it.copy(connection = DeviceConnection.WAITING,
+                                        detail = "Sin lecturas nuevas · Comprueba que el prototipo esté encendido")
+                                }
                             }
                         }
                     }
                 } catch (cancelled: CancellationException) {
                     throw cancelled
-                } catch (_: Exception) {
-                    live.update { it.copy(connection = DeviceConnection.DISCONNECTED, brokerConnected = false,
-                        detail = "No se pudo conectar a MQTT. Revisa internet; reintento en 5 s") }
+                } catch (exception: Exception) {
+                    synchronized(lock) {
+                        accepting = false
+                        live.update {
+                            it.copy(connection = DeviceConnection.DISCONNECTED, brokerConnected = false,
+                                detail = (exception as? IOException)?.message
+                                    ?: "No se pudo conectar a Mosquitto. Comprueba el broker de ${QhawaSensorMqtt.WIFI}.")
+                        }
+                    }
+                } finally {
+                    synchronized(lock) { accepting = false }
                     runCatching { client.disconnectForcibly(0, 0, false) }
+                    runCatching { client.close(true) }
                 }
                 delay(5000)
             }
         } finally {
             forwarding.cancel()
-            runCatching { client.disconnectForcibly(0, 0, false) }
-            runCatching { client.close(true) }
         }
-    }.flowOn(Dispatchers.IO).stateIn(scope, SharingStarted.WhileSubscribed(5000, replayExpirationMillis = 0),
-        EnvironmentState(detail = "Abre Inicio para conectar con Wokwi", source = "Wokwi · Simulación"))
+    }.flowOn(Dispatchers.IO).stateIn(
+        scope, SharingStarted.WhileSubscribed(5000, replayExpirationMillis = 0),
+        EnvironmentState(detail = "Conéctate al Wi‑Fi ${QhawaSensorMqtt.WIFI} para recibir lecturas."),
+    )
 }

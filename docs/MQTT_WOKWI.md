@@ -1,3 +1,5 @@
+> Registro histórico de la simulación. La app actual usa el [prototipo físico](MQTT_PROTOTIPO.md).
+
 > Actualización 26/10/2026: el puerto 1883 del broker anterior no respondió en esta comprobación. Se verifican ambos extremos con HiveMQ. Consulta también [NOTIFICACIONES.md](NOTIFICACIONES.md).
 
 # Qhawa ↔ Wokwi por MQTT

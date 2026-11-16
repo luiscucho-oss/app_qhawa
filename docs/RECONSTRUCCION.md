@@ -1,4 +1,4 @@
-> Actualización MQTT: la integración Wokwi ya está implementada. Consulta [MQTT_WOKWI.md](MQTT_WOKWI.md) para configuración, uso y validación. Las observaciones de integración pendiente de esta revisión inicial se refieren al circuito físico de producción.
+> La configuración vigente se encuentra en [MQTT_PROTOTIPO.md](MQTT_PROTOTIPO.md).
 
 # Qhawa · Reconstrucción según el Prompt Maestro
 

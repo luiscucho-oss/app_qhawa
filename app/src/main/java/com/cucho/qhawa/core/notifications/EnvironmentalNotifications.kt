@@ -22,7 +22,7 @@ class EnvironmentalNotifications(private val context: Context) {
         if (Build.VERSION.SDK_INT >= 26) {
             val sound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
             manager.createNotificationChannel(NotificationChannel(CHANNEL, "Alertas ambientales", NotificationManager.IMPORTANCE_HIGH).apply {
-                description = "Cambios en las lecturas de Qhawa; Wokwi se identifica como simulación"
+                description = "Cambios en las lecturas del prototipo Qhawa"
                 setSound(sound, AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_NOTIFICATION).build())
             })
         }

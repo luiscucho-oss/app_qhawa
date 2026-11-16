@@ -7,7 +7,6 @@ import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.test.core.app.ApplicationProvider
-import androidx.test.platform.app.InstrumentationRegistry
 import com.cucho.qhawa.core.designsystem.theme.QhawaTheme
 import com.cucho.qhawa.data.environment.*
 import com.cucho.qhawa.feature.home.HomeScreen
@@ -19,7 +18,7 @@ import java.io.File
 class EnvironmentalNotificationsTest {
     @get:Rule val compose = createComposeRule()
     private fun sample(temp: Double = 24.0, hum: Double = 50.0) = EnvironmentalReading(System.currentTimeMillis(),
-        10.0, temp, hum, "PM2.5", true, System.nanoTime(), System.nanoTime(), "VERDE")
+        10.0, temp, hum, "PM2.5", pm10 = 11.0)
 
     @Test fun bannerOverlaysContentResetsTimerForSameColorAndOpensAdvice() {
         val samples = MutableStateFlow(EnvironmentState(DeviceConnection.CONNECTED, listOf(sample()), true))

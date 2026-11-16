@@ -1,6 +1,7 @@
 package com.cucho.qhawa.feature.home
 
 import com.cucho.qhawa.data.environment.EnvironmentalReading
+import com.cucho.qhawa.data.habits.pmAdviceLevel
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -22,44 +23,33 @@ internal fun historyDayStart(now: Long, daysAgo: Int = 0): Long = Calendar.getIn
 internal fun historyReadings(readings: List<EnvironmentalReading>, period: HistoryPeriod, now: Long) =
     readings.filter { it.timestamp in historyDayStart(now, period.days - 1)..now }.sortedBy { it.timestamp }
 
-/** Rangos de visualización: Wokwi conserva su perfil demostrativo, sin inferir salud. */
-internal fun historyPmBand(pm: Double?, wokwi: Boolean): Int? = pm?.takeIf { it.isFinite() }?.let {
-    when {
-        if (wokwi) it < 25 else it <= 12 -> 0
-        if (wokwi) it < 75 else it <= 35 -> 1
-        else -> 2
-    }
-}
-
 internal data class HistoryWeekSummary(val recordedDays: Int, val lowDays: Int)
 
-internal fun historyWeekSummary(readings: List<EnvironmentalReading>, now: Long, wokwi: Boolean): HistoryWeekSummary {
+internal fun historyWeekSummary(readings: List<EnvironmentalReading>, now: Long): HistoryWeekSummary {
     val days = historyReadings(readings, HistoryPeriod.WEEK, now)
         .filter { it.pm?.isFinite() == true }
         .groupBy { historyDayStart(it.timestamp) }
         .values
-    return HistoryWeekSummary(days.size, days.count { day -> historyPmBand(day.map { it.pm!! }.average(), wokwi) == 0 })
+    return HistoryWeekSummary(days.size, days.count { day -> pmAdviceLevel(day.map { it.pm!! }.average())?.ordinal == 0 })
 }
 
-/** Exporta todas las lecturas del período, no los puntos reducidos para dibujar. */
-internal fun historyCsv(readings: List<EnvironmentalReading>, demo: Boolean): String {
-    val dateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", Locale.ROOT)
-    fun text(value: String): String {
-        val safe = if (value.firstOrNull() in listOf('=', '+', '-', '@')) "'$value" else value
-        return "\"${safe.replace("\"", "\"\"")}\""
-    }
-    return buildString {
-        append('\uFEFF')
-        append("fecha_recepcion,origen,variable_pm,pm_ug_m3,temperatura_c,humedad_pct,estado_led\r\n")
-        readings.sortedBy { it.timestamp }.forEach { reading ->
-            append(listOf(
-                text(dateFormat.format(Date(reading.timestamp))),
-                text(if (demo) "Ejemplo local" else if (reading.simulated) "Simulación Wokwi MQTT" else "Dispositivo"),
-                text(reading.pmLabel), reading.pm?.toString().orEmpty(),
-                reading.temperature?.toString().orEmpty(), reading.humidity?.toString().orEmpty(),
-                text(reading.demoState.orEmpty()),
-            ).joinToString(","))
-            append("\r\n")
-        }
+internal suspend fun Appendable.writeHistoryCsv(
+    demo: Boolean,
+    forEachReading: suspend ((EnvironmentalReading) -> Unit) -> Unit,
+) {
+    val dateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSXXX", Locale.ROOT)
+    append('\uFEFF')
+    append("fecha_recepcion,origen,pm25_ug_m3,pm10_ug_m3,temperatura_c,humedad_pct,nivel_pm25\r\n")
+    forEachReading { reading ->
+        append(listOf(
+            dateFormat.format(Date(reading.timestamp)),
+            if (demo) "Ejemplo local" else "Prototipo Qhawa MQTT",
+            reading.pm?.toString().orEmpty(),
+            reading.pm10?.toString().orEmpty(),
+            reading.temperature?.toString().orEmpty(),
+            reading.humidity?.toString().orEmpty(),
+            if (demo) "" else pmAdviceLevel(reading.pm)?.label.orEmpty(),
+        ).joinToString(","))
+        append("\r\n")
     }
 }

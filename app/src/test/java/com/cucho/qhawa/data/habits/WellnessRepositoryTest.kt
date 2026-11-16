@@ -1,6 +1,9 @@
 package com.cucho.qhawa.data.habits
 
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.longPreferencesKey
+import java.security.MessageDigest
 import java.io.File
 import java.util.Calendar
 import kotlinx.coroutines.*
@@ -27,8 +30,6 @@ class WellnessRepositoryTest {
             val ana = WellnessRepository(store, "account:ana") { legacy }
             assertEquals(setOf(yesterday), ana.data.first().completedDays)
             assertEquals(1, ana.data.first().adviceCompletions.size)
-            assertEquals(1, ana.data.first().adviceIndex)
-            assertEquals(0L, ana.data.first().adviceAvailableAt)
             assertTrue(ana.completeHabit(today, now))
             legacy["completed:account:ana"] = emptySet<String>()
             assertEquals(setOf(yesterday, today), WellnessRepository(store, "account:ana") { legacy }.data.first().completedDays)
@@ -53,54 +54,21 @@ class WellnessRepositoryTest {
         } finally { job.cancelAndJoin() }
     }
 
-    @Test fun cooldownSurvivesStoreRestartAndAllowsNextAdviceOnlyAfterFiveMinutes() = runBlocking {
-        val file = File(folder.root, "restart.preferences_pb")
-        var job = SupervisorJob()
-        try {
-            var store = PreferenceDataStoreFactory.create(scope = CoroutineScope(job + Dispatchers.IO)) { file }
-            var repository = WellnessRepository(store, "account:test") { emptyMap<String, Any>() }
-            assertTrue(repository.completeAdvice(now))
-            assertFalse(repository.completeAdvice(now + ADVICE_WAIT_MILLIS - 1))
-            job.cancelAndJoin()
-            job = SupervisorJob()
-            store = PreferenceDataStoreFactory.create(scope = CoroutineScope(job + Dispatchers.IO)) { file }
-            repository = WellnessRepository(store, "account:test") { emptyMap<String, Any>() }
-            val restored = repository.data.first()
-            assertEquals(now + 300_000, restored.adviceAvailableAt)
-            assertEquals(1, restored.adviceIndex)
-            assertFalse(restored.adviceReady(now + 299_999))
-            assertTrue(restored.adviceReady(now + 300_000))
-            assertTrue(repository.completeAdvice(now + 300_000))
-            assertEquals(2, repository.data.first().adviceCompletions.size)
-        } finally { job.cancelAndJoin() }
-    }
-
-    @Test fun recordsSelectedLevelAdviceAndRetainsCooldownAndExistingLog() = runBlocking {
+    @Test fun consecutiveAdviceAreAvailableImmediatelyEvenWithAnOldCooldown() = runBlocking {
         val job = SupervisorJob()
-        val store = PreferenceDataStoreFactory.create(scope = CoroutineScope(job + Dispatchers.IO)) { File(folder.root, "pm.preferences_pb") }
+        val store = PreferenceDataStoreFactory.create(scope = CoroutineScope(job + Dispatchers.IO)) { File(folder.root, "advice.preferences_pb") }
         try {
-            val repository = WellnessRepository(store, "account:test") { emptyMap<String, Any>() }
-            assertTrue(repository.completeAdvice(now))
-            val originalLog = repository.data.first().adviceCompletions
-            val red = pmAdvice.getValue(PmAdviceLevel.RED)[2]
-            assertFalse(repository.completeAdvice(now + 1, red.id))
-            val next = now + ADVICE_WAIT_MILLIS
-            assertTrue(repository.completeAdvice(next, red.id))
-            val restored = WellnessRepository(store, "account:test") { emptyMap<String, Any>() }.data.first()
-            assertEquals(originalLog + "$next|${red.id}", restored.adviceCompletions)
-            assertEquals(next + ADVICE_WAIT_MILLIS, restored.adviceAvailableAt)
-        } finally { job.cancelAndJoin() }
-    }
-
-    @Test fun rapidConcurrentCompletionsCannotSkipRecommendationsOrResetCooldown() = runBlocking {
-        val job = SupervisorJob()
-        val store = PreferenceDataStoreFactory.create(scope = CoroutineScope(job + Dispatchers.IO)) { File(folder.root, "concurrent.preferences_pb") }
-        try {
-            val repository = WellnessRepository(store, "account:test") { emptyMap<String, Any>() }
-            val results = (1..12).map { async { repository.completeAdvice(now) } }.awaitAll()
-            assertEquals(1, results.count { it })
-            assertEquals(1, repository.data.first().adviceCompletions.size)
-            assertEquals(now + ADVICE_WAIT_MILLIS, repository.data.first().adviceAvailableAt)
+            val user = "account:test"
+            val prefix = MessageDigest.getInstance("SHA-256").digest(user.toByteArray()).joinToString("") { "%02x".format(it) }
+            store.edit { it[longPreferencesKey("$prefix:advice_available_at")] = now + 300_000 }
+            val first = dailyAdvice.first().id
+            val second = pmAdvice.getValue(PmAdviceLevel.RED).first().id
+            val repository = WellnessRepository(store, user) { emptyMap<String, Any>() }
+            repository.completeAdvice(now, first)
+            repository.completeAdvice(now, second)
+            repository.completeAdvice(now, first)
+            val restored = WellnessRepository(store, user) { emptyMap<String, Any>() }.data.first()
+            assertEquals(setOf("$now|$first", "$now|$second"), restored.adviceCompletions)
         } finally { job.cancelAndJoin() }
     }
 }

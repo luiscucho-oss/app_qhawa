@@ -19,13 +19,8 @@ private val Context.wellnessDataStore by preferencesDataStore(name = "qhawa_well
 data class WellnessSnapshot(
     val completedDays: Set<String> = emptySet(),
     val assignments: Map<String, String> = emptyMap(),
-    val adviceIndex: Int = 0,
-    val adviceAvailableAt: Long = 0,
     val adviceCompletions: Set<String> = emptySet(),
-) {
-    fun adviceReady(now: Long) = now >= adviceAvailableAt
-    fun remainingMillis(now: Long) = (adviceAvailableAt - now).coerceAtLeast(0)
-}
+)
 
 /** Un DataStore de proceso; claves separadas para cada cuenta/demo. Sin dependencia de MQTT. */
 class WellnessRepository internal constructor(
@@ -42,8 +37,6 @@ class WellnessRepository internal constructor(
     private val prefix = MessageDigest.getInstance("SHA-256").digest(userKey.toByteArray()).joinToString("") { "%02x".format(it) }
     private val migrated = booleanPreferencesKey("$prefix:migrated")
     private val days = stringSetPreferencesKey("$prefix:days")
-    private val adviceIndex = intPreferencesKey("$prefix:advice_index")
-    private val availableAt = longPreferencesKey("$prefix:advice_available_at")
     private val adviceLog = stringSetPreferencesKey("$prefix:advice_log")
     private val assignments = stringSetPreferencesKey("$prefix:assignments")
 
@@ -73,8 +66,6 @@ class WellnessRepository internal constructor(
                 }
             }
             prefs[adviceLog] = prefs[adviceLog].orEmpty() + importedAdvice
-            if (prefs[adviceIndex] == null) prefs[adviceIndex] = importedAdvice.size % dailyAdvice.size
-            // El formato anterior no guardaba la hora: no se inventa una espera histórica.
             prefs[migrated] = true
         }
     }
@@ -88,8 +79,6 @@ class WellnessRepository internal constructor(
                     val parts = it.split('|', limit = 2)
                     if (parts.size == 2) parts[0] to parts[1] else null
                 }.toMap(),
-                adviceIndex = (prefs[adviceIndex] ?: 0).mod(dailyAdvice.size),
-                adviceAvailableAt = prefs[availableAt] ?: 0,
                 adviceCompletions = prefs[adviceLog].orEmpty().toSet(),
             )
         })
@@ -116,18 +105,11 @@ class WellnessRepository internal constructor(
         return accepted
     }
 
-    suspend fun completeAdvice(now: Long, adviceId: String? = null): Boolean {
-        require(adviceId == null || (dailyAdvice + pmAdvice.values.flatten()).any { it.id == adviceId })
-        require(now >= 0 && now <= Long.MAX_VALUE - ADVICE_WAIT_MILLIS)
-        var accepted = false
+    suspend fun completeAdvice(now: Long, adviceId: String) {
+        require((dailyAdvice + pmAdvice.values.flatten()).any { it.id == adviceId })
+        require(now >= 0)
         durableUpdate { prefs ->
-            if (now < (prefs[availableAt] ?: 0)) return@durableUpdate
-            val index = (prefs[adviceIndex] ?: 0).mod(dailyAdvice.size)
-            prefs[adviceLog] = prefs[adviceLog].orEmpty() + "$now|${adviceId ?: dailyAdvice[index].id}"
-            prefs[adviceIndex] = (index + 1) % dailyAdvice.size
-            prefs[availableAt] = now + ADVICE_WAIT_MILLIS
-            accepted = true
+            prefs[adviceLog] = prefs[adviceLog].orEmpty() + "$now|$adviceId"
         }
-        return accepted
     }
 }

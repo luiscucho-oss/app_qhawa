@@ -6,17 +6,17 @@ import org.junit.Test
 
 class PmAdviceTest {
     private fun reading(pm: Double?, label: String = "PM2.5") =
-        EnvironmentalReading(0, pm, null, null, pmLabel = label, simulated = true, demoState = "ROJO")
+        EnvironmentalReading(0, pm, null, null, pmLabel = label)
 
-    @Test fun classifiesExactBoundariesUsingNumericValueRatherThanFirmwareState() {
+    @Test fun classifiesExactBoundariesFromPhysicalSketch() {
         listOf(
             0.0 to PmAdviceLevel.GREEN,
-            24.999 to PmAdviceLevel.GREEN,
-            25.0 to PmAdviceLevel.YELLOW,
-            25.001 to PmAdviceLevel.YELLOW,
-            74.999 to PmAdviceLevel.YELLOW,
-            75.0 to PmAdviceLevel.RED,
-            75.001 to PmAdviceLevel.RED,
+            11.9 to PmAdviceLevel.GREEN,
+            12.0 to PmAdviceLevel.GREEN,
+            12.1 to PmAdviceLevel.YELLOW,
+            34.9 to PmAdviceLevel.YELLOW,
+            35.0 to PmAdviceLevel.YELLOW,
+            35.1 to PmAdviceLevel.RED,
             150.0 to PmAdviceLevel.RED,
         ).forEach { (pm, expected) ->
             assertEquals(expected, pmAdviceLevel(pm))

@@ -59,10 +59,10 @@ internal fun WellnessRoute(
     val scope = rememberCoroutineScope()
     val snackbar = remember { SnackbarHostState() }
     var saving by remember(userKey) { mutableStateOf(false) }
-    var celebration by remember(userKey) { mutableIntStateOf(0) }
-    var celebratingHabit by remember(userKey) { mutableStateOf(false) }
-    LaunchedEffect(celebration) {
-        if (celebration > 0) { celebratingHabit = true; delay(2200); celebratingHabit = false }
+    var celebration by remember(userKey, selectedTab) { mutableIntStateOf(0) }
+    var celebrating by remember(userKey, selectedTab) { mutableStateOf(false) }
+    LaunchedEffect(selectedTab, celebration) {
+        if (celebration > 0) { celebrating = true; delay(2200); celebrating = false }
     }
 
     val base = MaterialTheme.typography
@@ -84,32 +84,37 @@ internal fun WellnessRoute(
                 }
                 is WellnessLoad.Ready -> {
                     val progress = state.progress
-                    val waiting = !progress.adviceReady(now)
+                    val adviceDone = selectedTab == 3 && celebrating
                     val habitDone = dateKey(now) in progress.completedDays
                     val welcome = when {
                         alert != null -> "Cambio en las lecturas: $alert. Revisa tus registros."
-                        selectedTab == 2 && (habitDone || celebratingHabit) -> "¡Qhawa está feliz! Excelente trabajo."
+                        selectedTab == 2 && (habitDone || celebrating) -> "¡Qhawa está feliz! Excelente trabajo."
                         selectedTab == 2 -> "¿Listos para completar el hábito de hoy?"
-                        waiting -> "¡Genial! Cada acción cuenta."
+                        adviceDone -> "¡Genial! Cada acción cuenta."
                         else -> "Aquí tienes algunas ideas para hoy."
                     }
                     var tip by rememberSaveable(selectedTab, welcome) { mutableIntStateOf(0) }
                     val tips = if (selectedTab == 2) listOf("Cada día tiene un hábito distinto. Toca una fecha para consultarlo.", "Tus días completados seguirán aquí cuando vuelvas.")
-                        else listOf("Después de actuar, consulta el historial para comparar registros.", "Podrás registrar otra acción cuando termine la espera; no necesitas dejar la app abierta.")
+                        else listOf("Después de actuar, consulta el historial para comparar registros.", "Toca cualquier consejo para ver cómo practicarlo.")
                     val mascot: @Composable () -> Unit = {
                         QhawaMascotComponent(
                             state = when {
                                 alert != null -> QhawaMascotState.ALERT
-                                selectedTab == 2 && (habitDone || celebratingHabit) || selectedTab == 3 && waiting -> QhawaMascotState.HAPPY
+                                selectedTab == 2 && (habitDone || celebrating) || adviceDone -> QhawaMascotState.HAPPY
                                 else -> QhawaMascotState.GREETING
                             },
                             message = if (tip == 0) welcome else tips[(tip - 1) % tips.size],
-                            modifier = Modifier.fillMaxWidth(), mascotSize = 100.dp,
-                            reactionKey = "$selectedTab:$celebration:${progress.adviceCompletions.size}",
+                            modifier = Modifier.fillMaxWidth(), mascotSize = 148.dp,
+                            reactionKey = "$selectedTab:$celebration",
                             onMascotClick = { tip = tip % tips.size + 1 },
                         )
                     }
-                    Column(Modifier.widthIn(max = 620.dp).fillMaxWidth().verticalScroll(rememberScrollState(selectedTab))
+                    val scrollState = rememberScrollState()
+                    LaunchedEffect(selectedTab) {
+                        scrollState.scrollTo(0)
+                    }
+
+                    Column(Modifier.widthIn(max = 620.dp).fillMaxWidth().verticalScroll(scrollState)
                         .padding(horizontal = 16.dp, vertical = 20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                         if (selectedTab == 2) {
                             HabitsContent(progress, now, saving, mascot) { date ->
@@ -122,12 +127,17 @@ internal fun WellnessRoute(
                                 }
                             }
                         } else {
-                            AdviceContent(progress, now, saving, reading, demo, mascot, onHistory) { adviceId ->
+                            AdviceContent(reading, demo, saving, mascot, onHistory) { adviceId ->
                                 if (!saving) scope.launch {
                                     saving = true
                                     val result = runCatching { repository.completeAdvice(currentClock(), adviceId) }
                                     saving = false
-                                    if (result.isFailure) snackbar.showSnackbar("No se pudo guardar la recomendación. Inténtalo de nuevo.")
+                                    if (result.isSuccess) {
+                                        celebration++
+                                        snackbar.showSnackbar("Acción registrada")
+                                    } else {
+                                        snackbar.showSnackbar("No se pudo guardar la recomendación. Inténtalo de nuevo.")
+                                    }
                                 }
                             }
                         }

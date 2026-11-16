@@ -35,6 +35,7 @@ import com.cucho.qhawa.core.designsystem.component.QhawaMascotComponent
 import com.cucho.qhawa.core.designsystem.component.QhawaMascotState
 import com.cucho.qhawa.core.designsystem.theme.qhawaScreenBackground
 import com.cucho.qhawa.data.environment.*
+import com.cucho.qhawa.data.habits.pmAdviceLevel
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -55,11 +56,13 @@ private fun historyDate(time: Long, pattern: String = "dd MMM · HH:mm") =
 
 private enum class HistoryMetric(val title: String, val unit: String, val icon: ImageVector) {
     AIR("Calidad del aire", "µg/m³", Icons.Default.Air),
+    PM10("PM10", "µg/m³", Icons.Default.Air),
     TEMPERATURE("Temperatura", "°C", Icons.Default.DeviceThermostat),
     HUMIDITY("Humedad", "%", Icons.Default.Opacity);
 
     fun value(reading: EnvironmentalReading) = when (this) {
         AIR -> reading.pm
+        PM10 -> reading.pm10
         TEMPERATURE -> reading.temperature
         HUMIDITY -> reading.humidity
     }
@@ -73,21 +76,14 @@ internal fun HistoryScreen(
     now: Long,
     environment: EnvironmentState,
     onDemoChange: (Boolean) -> Unit,
+    forEachReading: suspend (Long, Long, (EnvironmentalReading) -> Unit) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var period by rememberSaveable { mutableStateOf(HistoryPeriod.TODAY) }
     var metric by rememberSaveable { mutableStateOf(HistoryMetric.AIR) }
     val filtered = remember(readings, period, now) { historyReadings(readings, period, now) }
     val latest = filtered.lastOrNull()
-    val wokwi = !demo && (environment.source.contains("Wokwi", true) || readings.any { it.simulated })
-    val band = latest?.let {
-        when (it.demoState) {
-            "VERDE" -> 0
-            "AMARILLO" -> 1
-            "ROJO" -> 2
-            else -> historyPmBand(it.pm, wokwi)
-        }
-    }
+    val band = pmAdviceLevel(latest?.pm)?.ordinal
     val bandText = when (band) { 0 -> "Nivel bajo"; 1 -> "Moderado"; 2 -> "Elevado"; else -> "Sin lectura" }
     var tip by rememberSaveable(period, demo) { mutableIntStateOf(0) }
     val context = LocalContext.current
@@ -148,57 +144,51 @@ internal fun HistoryScreen(
                 }
             }
 
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text(if (demo) "Datos de ejemplo" else "Wokwi · MQTT", Modifier.weight(1f),
-                    style = MaterialTheme.typography.labelMedium, color = HistoryMuted)
-                Text("Ejemplos", style = MaterialTheme.typography.labelSmall, color = HistoryMuted)
-                Switch(demo, onCheckedChange = onDemoChange,
-                    modifier = Modifier.padding(start = 6.dp).semantics { contentDescription = "Explorar datos de ejemplo" })
-            }
+            ExampleDataRow(demo = demo, onDemoChange = onDemoChange)
 
             Surface(color = Color(0xFFF0EFFF), shape = RoundedCornerShape(18.dp)) {
                 Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
                     horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
                     QhawaMascotComponent(
                         state = when (band) { 0 -> QhawaMascotState.HAPPY; 1, 2 -> QhawaMascotState.ALERT; else -> QhawaMascotState.IDLE },
-                        message = "", mascotSize = 48.dp,
+                        message = "", mascotSize = 72.dp,
                         onMascotClick = { tip = tip % 2 + 1 }, reactionKey = period,
                     )
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                        Text("MONITOR PRINCIPAL", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
-                        Text(if (latest == null) "Sin registros" else "$bandText · ${historyNumber(latest.pm)} µg/m³",
+                        Text("Última lectura del período", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                        Text(if (latest == null) "Sin registros" else bandText,
                             style = MaterialTheme.typography.titleMedium, color = HistoryInk, fontWeight = FontWeight.Bold)
-                        Text(when (tip) {
+                        val hint = when (tip) {
                             1 -> "Prueba el filtro Hoy para ver los registros recientes."
-                            2 -> "Toca el gráfico para explorar una lectura."
-                            else -> if (latest == null) "Cuando lleguen lecturas, las exploraremos aquí."
-                                else "Última del período · ${historyDate(latest.timestamp)}"
-                        }, style = MaterialTheme.typography.bodySmall, color = HistoryGreen)
+                            2 -> "Toca el gráfico para explorar las fechas."
+                            else -> null
+                        }
+                        if (hint != null) Text(hint, style = MaterialTheme.typography.bodySmall, color = HistoryGreen)
                     }
                 }
             }
 
             if (!demo) {
-                val fresh = latest != null && now - latest.timestamp <= WokwiMqtt.STALE_MS && environment.connection == DeviceConnection.CONNECTED
-                Text(if (fresh) "Recibiendo simulación Wokwi · Fecha de recepción"
+                val fresh = latest != null && environment.freshReading(now) != null
+                Text(if (fresh) "Recibiendo lecturas del prototipo · Una muestra por minuto en la gráfica"
                     else "${if (environment.brokerConnected) "MQTT conectado" else "MQTT sin conexión"} · ${if (latest == null) "Esperando registros" else "Mostrando registros guardados"}",
                     style = MaterialTheme.typography.bodySmall, color = HistoryMuted)
             }
 
-            HistoryChart(filtered, period, metric, wokwi, onMetricChange = { metric = it })
+            HistoryChart(filtered, period, metric, onMetricChange = { metric = it })
 
             Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 HistorySmallMetric("Temperatura", latest?.temperature, "°C", Icons.Default.DeviceThermostat,
-                    when { latest?.temperature == null -> "Sin lectura DHT22"; latest.temperature in 18.0..25.0 -> "En rango"; else -> "Fuera de rango" },
+                    when { latest?.temperature == null -> "Sin lectura DHT11"; latest.temperature in 18.0..25.0 -> "En rango"; else -> "Fuera de rango" },
                     Color(0xFF956000), metric == HistoryMetric.TEMPERATURE,
                     Modifier.weight(1f).fillMaxHeight()) { metric = HistoryMetric.TEMPERATURE }
                 HistorySmallMetric("Humedad", latest?.humidity, "%", Icons.Default.Opacity,
-                    when { latest?.humidity == null -> "Sin lectura DHT22"; latest.humidity in 30.0..60.0 -> "En rango"; else -> "Fuera de rango" },
+                    when { latest?.humidity == null -> "Sin lectura DHT11"; latest.humidity in 30.0..60.0 -> "En rango"; else -> "Fuera de rango" },
                     Color(0xFF0086BA), metric == HistoryMetric.HUMIDITY,
                     Modifier.weight(1f).fillMaxHeight()) { metric = HistoryMetric.HUMIDITY }
             }
 
-            val week = remember(readings, now, wokwi) { historyWeekSummary(readings, now, wokwi) }
+            val week = remember(readings, now) { historyWeekSummary(readings, now) }
             Surface(color = HistoryMint, shape = RoundedCornerShape(18.dp)) {
                 Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                     Surface(shape = RoundedCornerShape(12.dp), color = Color.White) {
@@ -208,7 +198,7 @@ internal fun HistoryScreen(
                         Text("RESUMEN DE LA SEMANA", style = MaterialTheme.typography.labelSmall, color = HistoryGreen)
                         Text(if (week.recordedDays == 0) "Aún no hay días registrados" else "${week.lowDays} de ${week.recordedDays} días con PM bajo",
                             style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = HistoryInk)
-                        Text("Promedios diarios · Últimos 7 días. ${7 - week.recordedDays} días sin registros.",
+                        Text("Promedios diarios de las muestras por minuto. ${7 - week.recordedDays} días sin registros.",
                             style = MaterialTheme.typography.bodySmall, color = HistoryMuted)
                     }
                 }
@@ -217,14 +207,26 @@ internal fun HistoryScreen(
                 onClick = {
                     val snapshot = filtered
                     val snapshotDemo = demo
+                    val from = historyDayStart(now, period.days - 1)
+                    val to = now
                     val filename = "qhawa_historial_${period.name.lowercase()}_${historyDate(now, "yyyyMMdd")}.csv"
                     exporting = true
                     scope.launch {
                         val result = withContext(Dispatchers.IO) {
                             runCatching {
-                                File.createTempFile("qhawa-history-", ".csv", context.cacheDir).apply {
-                                    writeText(historyCsv(snapshot, snapshotDemo), Charsets.UTF_8)
-                                }.absolutePath
+                                val report = File.createTempFile("qhawa-history-", ".csv", context.cacheDir)
+                                try {
+                                    report.bufferedWriter(Charsets.UTF_8).use { writer ->
+                                        writer.writeHistoryCsv(snapshotDemo) { action ->
+                                            if (snapshotDemo) snapshot.forEach(action)
+                                            else forEachReading(from, to, action)
+                                        }
+                                    }
+                                    report.absolutePath
+                                } catch (error: Exception) {
+                                    report.delete()
+                                    throw error
+                                }
                             }
                         }
                         if (result.isSuccess) {
@@ -272,7 +274,7 @@ private fun HistorySmallMetric(
 @Composable
 private fun HistoryChart(
     readings: List<EnvironmentalReading>, period: HistoryPeriod, metric: HistoryMetric,
-    wokwi: Boolean, onMetricChange: (HistoryMetric) -> Unit,
+    onMetricChange: (HistoryMetric) -> Unit,
 ) {
     val available = remember(readings, metric) { readings.filter { metric.value(it)?.isFinite() == true } }
     val points = remember(available) {
@@ -283,7 +285,12 @@ private fun HistoryChart(
     val selected = points.getOrNull(index)
     val min = points.minOfOrNull { metric.value(it)!! } ?: 0.0
     val max = points.maxOfOrNull { metric.value(it)!! } ?: 0.0
-    val unit = if (metric == HistoryMetric.AIR) "${readings.lastOrNull()?.pmLabel ?: "PM"} · µg/m³" else "${metric.title} · ${metric.unit}"
+    val isParticulateMatter = metric == HistoryMetric.AIR || metric == HistoryMetric.PM10
+    val unit = when (metric) {
+        HistoryMetric.AIR -> "PM2.5 · ${metric.unit}"
+        HistoryMetric.PM10 -> metric.unit
+        else -> "${metric.title} · ${metric.unit}"
+    }
     Surface(shape = RoundedCornerShape(20.dp), color = Color.White) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -298,7 +305,7 @@ private fun HistoryChart(
             }
             if (metric == HistoryMetric.AIR) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    val labels = if (wokwi) listOf("Bajo <25", "Medio <75", "Alto ≥75") else listOf("Bajo ≤12", "Medio ≤35", "Alto >35")
+                    val labels = listOf("Bajo ≤12", "Medio ≤35", "Alto >35")
                     val colors = listOf(HistoryGreen, Color(0xFFB66B00), Color(0xFFB93436))
                     labels.forEachIndexed { i, label ->
                         Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically,
@@ -308,6 +315,7 @@ private fun HistoryChart(
                         }
                     }
                 }
+                TextButton(onClick = { onMetricChange(HistoryMetric.PM10) }, contentPadding = PaddingValues(0.dp)) { Text("Ver PM10") }
             } else {
                 TextButton(onClick = { onMetricChange(HistoryMetric.AIR) }, contentPadding = PaddingValues(0.dp)) { Text("Volver a calidad del aire") }
             }
@@ -320,7 +328,13 @@ private fun HistoryChart(
                 }
             } else {
                 Canvas(Modifier.fillMaxWidth().height(108.dp)
-                    .semantics { contentDescription = "Gráfico de ${metric.title}. ${points.size} puntos. Mínimo ${historyNumber(min)}, máximo ${historyNumber(max)} ${metric.unit}. Usa el deslizador para consultar lecturas." }
+                    .semantics {
+                        contentDescription = if (isParticulateMatter) {
+                            "Gráfico de ${metric.title}."
+                        } else {
+                            "Gráfico de ${metric.title}. ${points.size} puntos. Mínimo ${historyNumber(min)}, máximo ${historyNumber(max)} ${metric.unit}. Usa el deslizador para consultar lecturas."
+                        }
+                    }
                     .pointerInput(points) {
                         detectTapGestures { tap ->
                             val fraction = ((tap.x - 8.dp.toPx()) / (size.width - 16.dp.toPx())).coerceIn(0f, 1f)
@@ -363,14 +377,17 @@ private fun HistoryChart(
                         drawCircle(Color(0xFF00A5CB), 3.dp.toPx(), point(index))
                     }
                 }
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    val format = if (period == HistoryPeriod.TODAY) "HH:mm" else "dd MMM"
-                    Text(historyDate(points.first().timestamp, format), style = MaterialTheme.typography.labelSmall, color = HistoryMuted)
-                    Text(historyDate(points.last().timestamp, format), style = MaterialTheme.typography.labelSmall, color = HistoryMuted)
+                if (!isParticulateMatter) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        val format = if (period == HistoryPeriod.TODAY) "HH:mm" else "dd MMM"
+                        Text(historyDate(points.first().timestamp, format), style = MaterialTheme.typography.labelSmall, color = HistoryMuted)
+                        Text(historyDate(points.last().timestamp, format), style = MaterialTheme.typography.labelSmall, color = HistoryMuted)
+                    }
                 }
                 selected?.let {
-                    Text("${historyNumber(metric.value(it))} ${metric.unit} · ${historyDate(it.timestamp)}",
-                        style = MaterialTheme.typography.labelMedium, color = HistoryGreen)
+                    val date = historyDate(it.timestamp)
+                    val label = if (isParticulateMatter) date else "${historyNumber(metric.value(it))} ${metric.unit} · $date"
+                    Text(label, style = MaterialTheme.typography.labelMedium, color = HistoryGreen)
                 }
                 if (points.size > 1) Slider(
                     value = index.coerceAtLeast(0).toFloat(),

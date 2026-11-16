@@ -1,6 +1,7 @@
 package com.cucho.qhawa.feature.home
 
 import com.cucho.qhawa.data.environment.EnvironmentalReading
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
 import org.junit.Test
 import java.util.Calendar
@@ -20,26 +21,21 @@ class HistoryDataTest {
     @Test fun summaryCountsOnlyMeasuredDaysAndUsesDailyAverages() {
         val yesterday = historyDayStart(now, 1) + 1000
         val records = listOf(reading(now, 5.0), reading(now - 1000, 45.0), reading(yesterday, 10.0), reading(historyDayStart(now, 2), null))
-        assertEquals(HistoryWeekSummary(2, 1), historyWeekSummary(records, now, wokwi = true))
-        assertEquals(HistoryWeekSummary(0, 0), historyWeekSummary(emptyList(), now, wokwi = false))
+        assertEquals(HistoryWeekSummary(2, 1), historyWeekSummary(records, now))
+        assertEquals(HistoryWeekSummary(0, 0), historyWeekSummary(emptyList(), now))
     }
 
-    @Test fun wokwiKeepsItsDemonstrationThresholdsAndMissingIsNotGood() {
-        assertEquals(0, historyPmBand(24.9, true))
-        assertEquals(1, historyPmBand(25.0, true))
-        assertEquals(2, historyPmBand(75.0, true))
-        assertEquals(1, historyPmBand(19.0, false))
-        assertNull(historyPmBand(null, true))
-    }
+    @Test fun csvPreservesOriginMissingSensorsAndAllRows() = runBlocking {
+        val record = reading(now).copy(pm10 = 13.0)
+        val physical = StringBuilder()
+        physical.writeHistoryCsv(demo = false) { append -> repeat(181) { append(record) } }
+        assertTrue(physical.startsWith("\uFEFFfecha_recepcion"))
+        assertTrue(physical.contains("pm25_ug_m3,pm10_ug_m3"))
+        assertTrue(physical.lines()[1].endsWith(",Prototipo Qhawa MQTT,10.0,13.0,,,VERDE"))
+        assertEquals(182, physical.toString().trimEnd().lines().size)
 
-    @Test fun csvPreservesOriginMissingSensorsAndAllRows() {
-        val record = reading(now).copy(pmLabel = "PM,\"2.5\"", simulated = true, demoState = "VERDE")
-        val csv = historyCsv(listOf(record), false)
-        assertTrue(csv.startsWith("\uFEFFfecha_recepcion"))
-        assertTrue(csv.contains("\"Simulación Wokwi MQTT\""))
-        assertTrue(csv.contains("\"PM,\"\"2.5\"\"\""))
-        assertTrue(csv.contains(",10.0,,,\"VERDE\""))
-        assertEquals(182, historyCsv(List(181) { record }, true).trimEnd().lines().size)
-        assertTrue(historyCsv(listOf(record.copy(pmLabel = "=1+1")), true).contains("\"'=1+1\""))
+        val demo = StringBuilder()
+        demo.writeHistoryCsv(demo = true) { it(record.copy(pm10 = null)) }
+        assertTrue(demo.lines()[1].endsWith(",Ejemplo local,10.0,,,,"))
     }
 }

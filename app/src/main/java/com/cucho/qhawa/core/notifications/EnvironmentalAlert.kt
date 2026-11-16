@@ -1,37 +1,38 @@
 package com.cucho.qhawa.core.notifications
 
-import com.cucho.qhawa.data.environment.*
+import com.cucho.qhawa.data.environment.EnvironmentState
+import com.cucho.qhawa.data.environment.freshReading
+import com.cucho.qhawa.data.habits.PmAdviceLevel
+import com.cucho.qhawa.data.habits.pmAdviceLevel
 
 enum class AlertLevel(val color: Long) { GOOD(0xFF246540), WARNING(0xFF805400), CRITICAL(0xFFB3261E) }
 data class EnvironmentalAlert(val id: Long, val level: AlertLevel, val title: String, val message: String, val sound: Boolean)
 private data class Levels(val pm: AlertLevel?, val temperature: AlertLevel?, val humidity: AlertLevel?)
 
-/** Demo LED thresholds mirror the sketch. Comfort ranges are app references, not health standards. */
+/** PM2.5 follows the prototype; temperature and humidity use the app’s comfort ranges. */
 class EnvironmentalAlertEngine {
     private var previous: Levels? = null
-    private var lastSample: Pair<Long, Long?>? = null
+    private var lastSample: Long? = null
     private var nextId = 0L
     private var lastSoundAt: Long? = null
     private var lastSoundLevel: AlertLevel? = null
 
     fun evaluate(state: EnvironmentState, now: Long, enabled: Boolean = true): EnvironmentalAlert? {
-        val sample = state.readings.lastOrNull()
-        if (!enabled || state.connection != DeviceConnection.CONNECTED || sample == null ||
-            now - sample.timestamp !in 0..WokwiMqtt.STALE_MS) {
+        val sample = state.freshReading(now)
+        if (!enabled || sample == null) {
             previous = null
             lastSample = null
             return null
         }
-        val key = sample.timestamp to sample.sequence
-        if (lastSample == key) return null
-        lastSample = key
+        if (lastSample == sample.timestamp) return null
+        lastSample = sample.timestamp
         val current = Levels(
-            if (sample.simulated) when (sample.demoState) {
-                "VERDE" -> AlertLevel.GOOD
-                "AMARILLO" -> AlertLevel.WARNING
-                "ROJO" -> AlertLevel.CRITICAL
-                else -> sample.pm?.let { if (it < 25) AlertLevel.GOOD else if (it < 75) AlertLevel.WARNING else AlertLevel.CRITICAL }
-            } else null, // A real sensor needs its own documented classification profile.
+            when (pmAdviceLevel(sample.pm.takeIf { sample.pmLabel == "PM2.5" })) {
+                PmAdviceLevel.GREEN -> AlertLevel.GOOD
+                PmAdviceLevel.YELLOW -> AlertLevel.WARNING
+                PmAdviceLevel.RED -> AlertLevel.CRITICAL
+                null -> null
+            },
             sample.temperature?.let { if (it in 18.0..25.0) AlertLevel.GOOD else AlertLevel.WARNING },
             sample.humidity?.let { if (it in 30.0..60.0) AlertLevel.GOOD else AlertLevel.WARNING },
         )
@@ -68,9 +69,6 @@ class EnvironmentalAlertEngine {
             AlertLevel.WARNING.takeIf { missing }).maxBy { it.ordinal }
         val sound = lastSoundAt == null || now - lastSoundAt!! >= 30_000 || level.ordinal > (lastSoundLevel?.ordinal ?: -1)
         if (sound) { lastSoundAt = now; lastSoundLevel = level }
-        return EnvironmentalAlert(++nextId, level,
-            if (sample.simulated) "Wokwi · ${when (level) { AlertLevel.CRITICAL -> "Alerta roja"; AlertLevel.WARNING -> "Revisa las lecturas"; AlertLevel.GOOD -> "Valores en referencia" }}"
-            else "Qhawa · Cambio en las lecturas",
-            changes.joinToString(" • ") + if (sample.simulated) ". Simulación; referencias de demostración." else ". Referencias de confort de la app.", sound)
+        return EnvironmentalAlert(++nextId, level, "Qhawa · Cambio en las lecturas", changes.joinToString(" • "), sound)
     }
 }

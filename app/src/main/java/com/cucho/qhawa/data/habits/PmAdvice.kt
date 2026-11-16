@@ -2,17 +2,20 @@ package com.cucho.qhawa.data.habits
 
 import com.cucho.qhawa.data.environment.EnvironmentalReading
 
-/** Rangos demostrativos de Qhawa; no son umbrales sanitarios. */
-enum class PmAdviceLevel(val label: String, val range: String) {
-    GREEN("VERDE", "0 ≤ PM2.5 < 25 µg/m³"),
-    YELLOW("AMARILLO", "25 ≤ PM2.5 < 75 µg/m³"),
-    RED("ROJO", "PM2.5 ≥ 75 µg/m³"),
+/** PM2.5 thresholds used by the physical prototype. */
+private const val GREEN_MAX = 12.0
+private const val YELLOW_MAX = 35.0
+
+enum class PmAdviceLevel(val label: String, val range: String, val action: String) {
+    GREEN("VERDE", "0–12 µg/m³", "Prevenir partículas"),
+    YELLOW("AMARILLO", ">12 y ≤35 µg/m³", "Reducir partículas"),
+    RED("ROJO", ">35 µg/m³", "Actuar ahora"),
 }
 
 fun pmAdviceLevel(pm: Double?): PmAdviceLevel? = when {
     pm == null || !pm.isFinite() || pm < 0 -> null
-    pm < 25 -> PmAdviceLevel.GREEN
-    pm < 75 -> PmAdviceLevel.YELLOW
+    pm <= GREEN_MAX -> PmAdviceLevel.GREEN
+    pm <= YELLOW_MAX -> PmAdviceLevel.YELLOW
     else -> PmAdviceLevel.RED
 }
 

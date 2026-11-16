@@ -57,75 +57,78 @@ fun QhawaTopBar(
     onSignOutClick: () -> Unit,
     modifier: Modifier = Modifier,
     hasUnreadNotifications: Boolean = false,
+    footer: (@Composable () -> Unit)? = null,
 ) {
     Surface(
         modifier = modifier.fillMaxWidth(),
         color = MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.88f),
         shadowElevation = 2.dp,
     ) {
-        Row(
-            modifier = Modifier
-                .statusBarsPadding()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Surface(
-                modifier = Modifier.size(38.dp),
-                shape = RoundedCornerShape(11.dp),
-                color = MaterialTheme.colorScheme.surfaceContainerLow,
+        Column(Modifier.statusBarsPadding()) {
+            Row(
+                modifier = Modifier
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Image(
-                    painter = painterResource(R.drawable.qhawa_brand_mark),
-                    contentDescription = stringResource(R.string.app_name),
-                    modifier = Modifier.fillMaxSize().padding(4.dp),
-                    contentScale = ContentScale.Fit,
-                )
-            }
-            Spacer(Modifier.width(10.dp))
-
-            Column(modifier = Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = stringResource(R.string.app_name),
-                        style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.primary,
+                Surface(
+                    modifier = Modifier.size(38.dp),
+                    shape = RoundedCornerShape(11.dp),
+                    color = MaterialTheme.colorScheme.surfaceContainerLow,
+                ) {
+                    Image(
+                        painter = painterResource(R.drawable.qhawa_brand_mark),
+                        contentDescription = stringResource(R.string.app_name),
+                        modifier = Modifier.fillMaxSize().padding(4.dp),
+                        contentScale = ContentScale.Fit,
                     )
-                    Spacer(Modifier.width(8.dp))
-                    Box(
-                        modifier = Modifier
-                            .size(5.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.outlineVariant),
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text(screenTitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                DeviceStatus(isOnline = isDeviceOnline)
-            }
+                Spacer(Modifier.width(10.dp))
 
-            IconButton(onClick = onNotificationsClick) {
-                Box {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_notifications),
-                        contentDescription = stringResource(R.string.notifications),
-                    )
-                    if (hasUnreadNotifications) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = stringResource(R.string.app_name),
+                            style = MaterialTheme.typography.titleLarge,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                        Spacer(Modifier.width(8.dp))
                         Box(
                             modifier = Modifier
-                                .size(8.dp)
+                                .size(5.dp)
                                 .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.error)
-                                .align(Alignment.TopEnd),
+                                .background(MaterialTheme.colorScheme.outlineVariant),
                         )
+                        Spacer(Modifier.width(8.dp))
+                        Text(screenTitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    DeviceStatus(isOnline = isDeviceOnline)
+                }
+
+                IconButton(onClick = onNotificationsClick) {
+                    Box {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_notifications),
+                            contentDescription = stringResource(R.string.notifications),
+                        )
+                        if (hasUnreadNotifications) {
+                            Box(
+                                modifier = Modifier
+                                    .size(8.dp)
+                                    .clip(CircleShape)
+                                    .background(MaterialTheme.colorScheme.error)
+                                    .align(Alignment.TopEnd),
+                            )
+                        }
                     }
                 }
-            }
 
-            ProfileButton(
-                userName = userName,
-                userEmail = userEmail,
-                onSignOutClick = onSignOutClick,
-            )
+                ProfileButton(
+                    userName = userName,
+                    userEmail = userEmail,
+                    onSignOutClick = onSignOutClick,
+                )
+            }
+            footer?.invoke()
         }
     }
 }
