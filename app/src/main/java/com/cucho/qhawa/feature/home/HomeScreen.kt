@@ -97,7 +97,7 @@ fun HomeScreen(
         if (event != null) { activeAlert = event; notifications.post(event) }
     }
     LaunchedEffect(activeAlert?.id) {
-        if (activeAlert != null) { delay(6000); activeAlert = null }
+        if (activeAlert != null) { delay(8_000); activeAlert = null }
     }
 
     Scaffold(

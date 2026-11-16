@@ -30,10 +30,11 @@ class EnvironmentalNotificationsTest {
         compose.runOnIdle { samples.value = samples.value.copy(readings = listOf(sample(temp = 29.0))) }
         compose.waitUntil(10_000) { compose.onAllNodesWithTag("environment-alert-banner").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithTag("environment-alert-banner").assertIsDisplayed()
-        SystemClock.sleep(4000)
+        SystemClock.sleep(5_500)
+        compose.onNodeWithTag("environment-alert-banner").assertIsDisplayed()
         compose.runOnIdle { samples.value = samples.value.copy(readings = listOf(sample(temp = 29.0, hum = 70.0))) }
         compose.waitUntil(10_000) { compose.onAllNodesWithText("Humedad: 70.0", substring = true).fetchSemanticsNodes().isNotEmpty() }
-        SystemClock.sleep(2500) // Past the first event's 6 s expiry, but before the second expiry.
+        SystemClock.sleep(3_000) // Past the first event's 8 s expiry, but before the second expiry.
         compose.onNodeWithTag("environment-alert-banner").assertIsDisplayed()
         screenshot("banner-warning")
         compose.onNodeWithText("Toca para ver consejos").performClick()
